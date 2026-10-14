@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>NEON DEFENDER: Geometry Shmup</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#080816">
+  <link rel="stylesheet" href="/src/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Overlay Layer -->
+    <div id="ui-layer">
+      <!-- Top HUD (Ingame) -->
+      <div id="hud" class="hud-screen hidden">
+        <div class="hud-top">
+          <div class="hud-left">
+            <div class="bar-container hp-bar-wrap">
+              <div class="bar-icon">❤️</div>
+              <div class="bar-bg"><div id="hp-bar-fill" class="bar-fill"></div></div>
+              <span id="hp-text">100/100</span>
+            </div>
+            <div class="bar-container shield-bar-wrap">
+              <div class="bar-icon">🛡️</div>
+              <div class="bar-bg"><div id="shield-bar-fill" class="bar-fill"></div></div>
+              <span id="shield-text">50/50</span>
+            </div>
+          </div>
+          
+          <div class="hud-center">
+            <div id="hud-mode-title" class="hud-badge">SECTOR 1</div>
+            <div id="hud-wave-text" class="hud-sub">WAVE 1/10</div>
+          </div>
+
+          <div class="hud-right">
+            <div class="currency-pill">
+              <span class="shard-icon">◆</span>
+              <span id="hud-shards">0</span>
+            </div>
+            <button id="btn-pause" class="icon-btn" aria-label="Pause">⏸</button>
+          </div>
+        </div>
+
+        <!-- Boss Health Bar -->
+        <div id="boss-bar-wrap" class="boss-bar-container hidden">
+          <div class="boss-name-row">
+            <span id="boss-name">OCTAGON OVERLORD</span>
+            <span id="boss-hp-pct">100%</span>
+          </div>
+          <div class="boss-bar-bg">
+            <div id="boss-bar-fill" class="boss-bar-fill"></div>
+          </div>
+        </div>
+
+        <!-- Floating Combo / Message Banner -->
+        <div id="banner-notice" class="banner-notice hidden"></div>
+
+        <!-- Ingame Bottom Controls (Mobile Friendly) -->
+        <div class="hud-bottom">
+          <div class="bottom-left">
+            <div id="power-indicator" class="power-level">WEAPON LVL 1</div>
+          </div>
+          <div class="bottom-right">
+            <button id="btn-bomb" class="bomb-btn">
+              <div class="bomb-glow"></div>
+              <span class="bomb-icon">💥</span>
+              <span class="bomb-label">EMP</span>
+              <div id="bomb-cooldown-overlay" class="cooldown-overlay"></div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Menu Screen -->
+      <div id="screen-main-menu" class="ui-screen active">
+        <div class="title-container">
+          <div class="neon-badge">GEOMETRY SHMUP</div>
+          <h1 class="game-title">NEON<br><span class="accent-text">DEFENDER</span></h1>
+          <p class="tagline">BULLET HELL • ZERO P2W • PURE SKILL</p>
+        </div>
+
+        <div class="menu-ship-preview">
+          <canvas id="shipPreviewCanvas" width="140" height="140"></canvas>
+          <div id="selected-ship-name" class="ship-name">CYBER DART</div>
+        </div>
+
+        <div class="currency-bar">
+          <div class="currency-pill large">
+            <span class="shard-icon">◆</span>
+            <span id="menu-shards">0</span>
+            <span class="shard-label">NEON SHARDS</span>
+          </div>
+        </div>
+
+        <div class="menu-actions">
+          <button id="btn-play-campaign" class="neon-btn primary-btn">
+            <span class="btn-shine"></span>
+            🚀 CAMPAIGN SECTORS
+          </button>
+          <button id="btn-play-arena" class="neon-btn arena-btn">
+            <span class="btn-shine"></span>
+            ⚔️ ENDLESS ARENA <span class="hot-badge">FARM $</span>
+          </button>
+          <div class="button-row">
+            <button id="btn-open-shop" class="neon-btn secondary-btn">
+              ⚡ WORKSHOP
+            </button>
+            <button id="btn-open-hangar" class="neon-btn secondary-btn">
+              🛸 HANGAR
+            </button>
+          </div>
+          <button id="btn-open-settings" class="neon-btn mini-btn">
+            ⚙️ SETTINGS & HOW TO PLAY
+          </button>
+        </div>
+      </div>
+
+      <!-- Campaign Level Select Screen -->
+      <div id="screen-campaign" class="ui-screen hidden">
+        <div class="screen-header">
+          <button id="btn-campaign-back" class="neon-btn mini-btn">◀ BACK</button>
+          <h2>GALAXY SECTORS</h2>
+          <div class="currency-pill small">
+            <span class="shard-icon">◆</span>
+            <span id="campaign-shards">0</span>
+          </div>
+        </div>
+        <div class="sectors-grid" id="sectors-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Shop / Workshop Screen -->
+      <div id="screen-shop" class="ui-screen hidden">
+        <div class="screen-header">
+          <button id="btn-shop-back" class="neon-btn mini-btn">◀ BACK</button>
+          <h2>CYBER WORKSHOP</h2>
+          <div class="currency-pill">
+            <span class="shard-icon">◆</span>
+            <span id="shop-shards">0</span>
+          </div>
+        </div>
+        <div class="shop-tip">
+          💡 Earn unlimited Shards in <b>Arena Mode</b> to max out all upgrades!
+        </div>
+        <div class="shop-list" id="shop-items-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Hangar / Ship Select Screen -->
+      <div id="screen-hangar" class="ui-screen hidden">
+        <div class="screen-header">
+          <button id="btn-hangar-back" class="neon-btn mini-btn">◀ BACK</button>
+          <h2>STARSHIP HANGAR</h2>
+          <div class="currency-pill">
+            <span class="shard-icon">◆</span>
+            <span id="hangar-shards">0</span>
+          </div>
+        </div>
+        <div class="hangar-carousel" id="hangar-ships-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Settings & How To Play Screen -->
+      <div id="screen-settings" class="ui-screen hidden">
+        <div class="screen-header">
+          <button id="btn-settings-back" class="neon-btn mini-btn">◀ BACK</button>
+          <h2>OPTIONS & INTEL</h2>
+          <div></div>
+        </div>
+        <div class="settings-content">
+          <div class="settings-group">
+            <h3>AUDIO CONTROLS</h3>
+            <div class="setting-row">
+              <span>Sound Effects (SFX)</span>
+              <button id="btn-toggle-sfx" class="toggle-btn active">ON</button>
+            </div>
+            <div class="setting-row">
+              <span>Chiptune Synth Music</span>
+              <button id="btn-toggle-music" class="toggle-btn active">ON</button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>TOUCH CONTROLS</h3>
+            <p class="guide-text">
+              • <b>Mobile</b>: Drag your finger anywhere to glide your ship! Auto-fire is always on.<br>
+              • <b>Finger Offset</b>: The ship glides slightly above your touch so your finger never blocks the action!<br>
+              • <b>EMP Bomb</b>: Tap the glowing EMP button to blast all enemy bullets into shards!<br>
+              • <b>Desktop</b>: Mouse drag or WASD/Arrow keys. Space/Click to fire. E for EMP.
+            </p>
+          </div>
+
+          <div class="settings-group">
+            <h3>NO PAY-TO-WIN PHILOSOPHY</h3>
+            <p class="guide-text">
+              Every upgrade, ship, and power in this game is 100% free and earnable through gameplay.
+              Jump into <b>Endless Arena</b> anytime to farm huge shard jackpots and power up your battle stats!
+            </p>
+          </div>
+
+          <div class="settings-group danger-zone">
+            <button id="btn-reset-data" class="neon-btn danger-btn">⚠️ RESET SAVE DATA</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pause Modal Screen -->
+      <div id="screen-pause" class="ui-screen modal-screen hidden">
+        <div class="modal-box">
+          <h2>SYSTEM PAUSED</h2>
+          <div class="pause-actions">
+            <button id="btn-resume" class="neon-btn primary-btn">▶ RESUME</button>
+            <button id="btn-pause-restart" class="neon-btn secondary-btn">🔄 RESTART</button>
+            <button id="btn-pause-quit" class="neon-btn danger-btn">🚪 QUIT TO MENU</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Over Screen -->
+      <div id="screen-gameover" class="ui-screen modal-screen hidden">
+        <div class="modal-box gameover-box">
+          <h2 class="danger-text">SHIP DESTROYED</h2>
+          <div id="gameover-reason" class="gameover-sub">HULL INTEGRITY COMPROMISED</div>
+
+          <div class="run-stats-card">
+            <div class="stat-row">
+              <span>Mode:</span>
+              <span id="stat-mode" class="stat-val">ARENA</span>
+            </div>
+            <div class="stat-row">
+              <span>Wave Reached:</span>
+              <span id="stat-wave" class="stat-val">14</span>
+            </div>
+            <div class="stat-row">
+              <span>Enemies Vaporized:</span>
+              <span id="stat-kills" class="stat-val">128</span>
+            </div>
+            <div class="stat-row highlight">
+              <span>Shards Harvested:</span>
+              <span id="stat-shards" class="stat-val">+450 ◆</span>
+            </div>
+          </div>
+
+          <div class="gameover-actions">
+            <button id="btn-retry" class="neon-btn primary-btn">⚡ PLAY AGAIN</button>
+            <button id="btn-gameover-shop" class="neon-btn secondary-btn">⚡ UPGRADE SHIP</button>
+            <button id="btn-gameover-menu" class="neon-btn mini-btn">MAIN MENU</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Victory Screen (Campaign Stage Cleared) -->
+      <div id="screen-victory" class="ui-screen modal-screen hidden">
+        <div class="modal-box victory-box">
+          <h2 class="victory-text">SECTOR SECURED!</h2>
+          <div id="victory-subtitle" class="victory-sub">SYSTEM DEFENSE RESTORED</div>
+
+          <div class="stars-row" id="victory-stars">
+            <span class="star-icon">★</span>
+            <span class="star-icon">★</span>
+            <span class="star-icon">★</span>
+          </div>
+
+          <div class="run-stats-card">
+            <div class="stat-row">
+              <span>Sector:</span>
+              <span id="vic-sector" class="stat-val">Sector 1</span>
+            </div>
+            <div class="stat-row">
+              <span>Clear Bonus:</span>
+              <span id="vic-bonus" class="stat-val">+300 ◆</span>
+            </div>
+            <div class="stat-row highlight">
+              <span>Total Shards Collected:</span>
+              <span id="vic-total-shards" class="stat-val">+750 ◆</span>
+            </div>
+          </div>
+
+          <div class="victory-actions">
+            <button id="btn-next-sector" class="neon-btn primary-btn">NEXT SECTOR ▶</button>
+            <button id="btn-victory-shop" class="neon-btn secondary-btn">⚡ UPGRADE SHIP</button>
+            <button id="btn-victory-menu" class="neon-btn mini-btn">MAIN MENU</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
