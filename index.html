@@ -67,8 +67,14 @@
           <div class="bottom-left">
             <div id="power-indicator" class="power-level">WEAPON LVL 1</div>
           </div>
-          <div class="bottom-right">
-            <button id="btn-bomb" class="bomb-btn">
+          <div class="bottom-right action-buttons">
+            <button id="btn-secondary" class="action-btn secondary-btn-weapon" title="Fire Secondary Weapon (Q / Right-Click / Tap)">
+              <div class="secondary-btn-glow"></div>
+              <span id="secondary-icon" class="action-icon">🚀</span>
+              <span id="secondary-label" class="action-label">MISSILE</span>
+              <div id="secondary-cooldown-overlay" class="cooldown-overlay"></div>
+            </button>
+            <button id="btn-bomb" class="action-btn bomb-btn" title="Detonate EMP Bomb (E / B / Tap)">
               <div class="bomb-glow"></div>
               <span class="bomb-icon">💥</span>
               <span class="bomb-label">EMP</span>
@@ -89,6 +95,7 @@
         <div class="menu-ship-preview">
           <canvas id="shipPreviewCanvas" width="140" height="140"></canvas>
           <div id="selected-ship-name" class="ship-name">CYBER DART</div>
+          <div id="selected-secondary-badge" class="secondary-preview-badge">🚀 SEEKER MISSILES</div>
         </div>
 
         <div class="currency-bar">
@@ -147,10 +154,17 @@
             <span id="shop-shards">0</span>
           </div>
         </div>
-        <div class="shop-tip">
+        <div class="shop-tabs">
+          <button id="tab-shop-systems" class="shop-tab active">⚡ SHIP SYSTEMS</button>
+          <button id="tab-shop-secondaries" class="shop-tab">🚀 SECONDARY ARSENAL</button>
+        </div>
+        <div class="shop-tip" id="shop-tip-text">
           💡 Earn unlimited Shards in <b>Arena Mode</b> to max out all upgrades!
         </div>
         <div class="shop-list" id="shop-items-container">
+          <!-- Populated by JS -->
+        </div>
+        <div class="shop-list hidden" id="shop-secondaries-container">
           <!-- Populated by JS -->
         </div>
       </div>

@@ -7,6 +7,8 @@ export class InputManager {
     this.isPointerDown = false;
     this.isShooting = false;
     this.empTriggered = false;
+    this.secondaryTriggered = false;
+    this.cycleSecondaryTriggered = false;
 
     // Relative drag tracking for mobile
     this.touchStartX = 0;
@@ -38,6 +40,12 @@ export class InputManager {
       this.keys[e.code] = true;
       if (e.code === 'KeyE' || e.code === 'KeyB') {
         this.empTriggered = true;
+      }
+      if (e.code === 'KeyQ' || e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        this.secondaryTriggered = true;
+      }
+      if (e.code === 'KeyC' || e.code === 'Digit2') {
+        this.cycleSecondaryTriggered = true;
       }
     });
 
@@ -106,6 +114,8 @@ export class InputManager {
       this.isShooting = true;
       this.targetX = coords.x;
       this.targetY = coords.y;
+    } else if (e.button === 2) { // Right click = Secondary Weapon
+      this.secondaryTriggered = true;
     }
   }
 
@@ -139,6 +149,18 @@ export class InputManager {
   consumeEmp() {
     const triggered = this.empTriggered;
     this.empTriggered = false;
+    return triggered;
+  }
+
+  consumeSecondary() {
+    const triggered = this.secondaryTriggered;
+    this.secondaryTriggered = false;
+    return triggered;
+  }
+
+  consumeCycleSecondary() {
+    const triggered = this.cycleSecondaryTriggered;
+    this.cycleSecondaryTriggered = false;
     return triggered;
   }
 }

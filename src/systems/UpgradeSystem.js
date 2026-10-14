@@ -199,3 +199,75 @@ export const SECTORS = [
     color: '#39ff14'
   }
 ];
+
+export const SECONDARY_WEAPONS = {
+  seeker: {
+    id: 'seeker',
+    name: 'SEEKER MISSILES',
+    shortName: 'MISSILE',
+    icon: '🚀',
+    desc: 'Fires high-velocity homing micro-missiles that aggressively track down targets.',
+    cost: 0, // Unlocked by default
+    color: '#39ff14',
+    secondaryColor: '#00f0ff',
+    maxLevel: 5,
+    getCost: (lvl) => Math.round(90 * Math.pow(lvl, 1.4)),
+    getStats: (lvl) => ({
+      damage: 28 + (lvl - 1) * 12,
+      count: 4 + (lvl >= 3 ? 2 : 0) + (lvl >= 5 ? 2 : 0), // 4 -> 6 -> 8 missiles
+      cooldown: Math.max(1.8, 3.2 - (lvl - 1) * 0.32)
+    })
+  },
+  railgun: {
+    id: 'railgun',
+    name: 'PHOTON RAILGUN',
+    shortName: 'RAILGUN',
+    icon: '⚡',
+    desc: 'Unleashes an instant hyper-dense laser beam that pierces through all enemies.',
+    cost: 150,
+    color: '#00f0ff',
+    secondaryColor: '#ffffff',
+    maxLevel: 5,
+    getCost: (lvl) => Math.round(120 * Math.pow(lvl, 1.4)),
+    getStats: (lvl) => ({
+      damage: 130 + (lvl - 1) * 55,
+      beamWidth: 12 + (lvl - 1) * 4,
+      cooldown: Math.max(2.4, 4.2 - (lvl - 1) * 0.4)
+    })
+  },
+  cluster: {
+    id: 'cluster',
+    name: 'CLUSTER FLAK',
+    shortName: 'FLAK',
+    icon: '💥',
+    desc: 'Launches heavy kinetic shells that explode into a 360° ring of lethal shrapnel.',
+    cost: 250,
+    color: '#ff7700',
+    secondaryColor: '#ffe600',
+    maxLevel: 5,
+    getCost: (lvl) => Math.round(110 * Math.pow(lvl, 1.4)),
+    getStats: (lvl) => ({
+      shellDamage: 60 + (lvl - 1) * 20,
+      shrapnelCount: 8 + (lvl - 1) * 2,
+      shrapnelDamage: 18 + (lvl - 1) * 6,
+      cooldown: Math.max(2.0, 3.6 - (lvl - 1) * 0.35)
+    })
+  },
+  vortex: {
+    id: 'vortex',
+    name: 'VOID VORTEX',
+    shortName: 'VORTEX',
+    icon: '🌀',
+    desc: 'Deploys a swirling gravitational rift that shreds hazards and detonates.',
+    cost: 450,
+    color: '#9d00ff',
+    secondaryColor: '#ff007f',
+    maxLevel: 5,
+    getCost: (lvl) => Math.round(140 * Math.pow(lvl, 1.45)),
+    getStats: (lvl) => ({
+      damage: 160 + (lvl - 1) * 60,
+      radius: 45 + (lvl - 1) * 10,
+      cooldown: Math.max(2.8, 4.8 - (lvl - 1) * 0.45)
+    })
+  }
+};

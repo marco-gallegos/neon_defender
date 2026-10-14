@@ -1,7 +1,7 @@
 // Player Ship Entity with Wingman Drones, Shields, and Modular Weapons
 import { Bullet } from './Bullet.js';
 import { Particle, FloatingText } from './Particle.js';
-import { SHIPS, UPGRADES } from '../systems/UpgradeSystem.js';
+import { SHIPS, UPGRADES, SECONDARY_WEAPONS } from '../systems/UpgradeSystem.js';
 import { audio } from '../engine/Audio.js';
 
 export class Player {
@@ -12,6 +12,13 @@ export class Player {
 
     this.shipDef = SHIPS[saveState.equippedShip] || SHIPS.alpha_dart;
     this.upgrades = saveState.upgrades;
+
+    // Secondary Weapon Setup
+    this.secondaryId = saveState.equippedSecondary || 'seeker';
+    this.unlockedSecondaries = saveState.unlockedSecondaries || ['seeker', 'railgun', 'cluster'];
+    this.secondaryUpgrades = saveState.secondaryUpgrades || { seeker: 1, railgun: 1, cluster: 1, vortex: 1 };
+    this.refreshSecondaryStats();
+    this.secondaryCooldown = 0;
 
     // Position
     this.x = canvasWidth / 2;
@@ -128,13 +135,13 @@ export class Player {
       ));
     }
 
-    // Weapons firing
+    // Primary Weapon automatic continuous firing
     const currentFireInterval = this.overdriveTimer > 0 
       ? this.baseFireInterval * 0.5 
       : this.baseFireInterval;
 
     this.shootTimer += dt;
-    if (input.isShooting && this.shootTimer >= currentFireInterval) {
+    if (this.shootTimer >= currentFireInterval) {
       this.shootTimer = 0;
       this.fireWeapon(bullets, particles);
     }
@@ -149,10 +156,149 @@ export class Player {
       }
     }
 
+    // Secondary Weapon timer & automatic firing on cooldown
+    if (this.secondaryCooldown > 0) {
+      this.secondaryCooldown -= dt;
+    }
+
+    if (input.consumeCycleSecondary && input.consumeCycleSecondary()) {
+      this.cycleSecondaryWeapon();
+    }
+
+    // Auto-fire secondary missiles/weapons whenever cooldown is ready and enemies are present, or manual trigger
+    const manualTrigger = input.consumeSecondary && input.consumeSecondary();
+    if (this.secondaryCooldown <= 0 && (manualTrigger || (enemies && enemies.length > 0))) {
+      this.triggerSecondary(bullets, particles, floatingTexts, enemies);
+    }
+
     // EMP Bomb trigger
     if (input.consumeEmp()) {
       this.triggerEmp(bullets, particles, floatingTexts, enemies);
     }
+  }
+
+  refreshSecondaryStats() {
+    this.secondaryDef = SECONDARY_WEAPONS[this.secondaryId] || SECONDARY_WEAPONS.seeker;
+    const lvl = this.secondaryUpgrades[this.secondaryId] || 1;
+    this.secondaryStats = this.secondaryDef.getStats(lvl);
+    this.secondaryMaxCooldown = this.secondaryStats.cooldown;
+  }
+
+  cycleSecondaryWeapon() {
+    if (!this.unlockedSecondaries || this.unlockedSecondaries.length <= 1) return;
+    const currentIdx = this.unlockedSecondaries.indexOf(this.secondaryId);
+    const nextIdx = (currentIdx + 1) % this.unlockedSecondaries.length;
+    this.secondaryId = this.unlockedSecondaries[nextIdx];
+    this.saveState.equippedSecondary = this.secondaryId;
+    this.refreshSecondaryStats();
+    this.secondaryCooldown = Math.min(this.secondaryCooldown, this.secondaryMaxCooldown);
+  }
+
+  triggerSecondary(bullets, particles, floatingTexts, enemies) {
+    if (this.secondaryCooldown > 0 || this.isDead) return false;
+    this.secondaryCooldown = this.secondaryMaxCooldown;
+
+    const stats = this.secondaryStats;
+    const secDef = this.secondaryDef;
+
+    if (this.secondaryId === 'seeker') {
+      // 1. CHASING SWARM MISSILES
+      audio.playMissileLaunch();
+      const count = stats.count || 4;
+      for (let i = 0; i < count; i++) {
+        const offsetAngle = ((i - (count - 1) / 2) / (count - 1 || 1)) * 0.95;
+        const vx = Math.sin(offsetAngle) * 440;
+        const vy = -Math.cos(offsetAngle) * 440;
+        const startX = this.x + (i % 2 === 0 ? -18 : 18);
+        const startY = this.y - 6;
+
+        bullets.push(new Bullet(startX, startY, vx, vy, stats.damage, true, {
+          type: 'missile',
+          homing: true,
+          color: secDef.color,
+          radius: 5.5,
+          life: 3.5,
+          pierce: 1,
+          splashRadius: 36,
+          splashDamage: stats.damage * 0.55
+        }));
+      }
+
+      for (let p = 0; p < 8; p++) {
+        particles.push(new Particle(
+          this.x + (Math.random() - 0.5) * 30,
+          this.y,
+          (Math.random() - 0.5) * 60,
+          40 + Math.random() * 40,
+          secDef.color,
+          3,
+          0.3,
+          'spark'
+        ));
+      }
+      return true;
+    }
+
+    if (this.secondaryId === 'railgun') {
+      // 2. PHOTON RAILGUN PIERCING BEAM
+      audio.playRailgunFire();
+      const beamW = stats.beamWidth || 12;
+      bullets.push(new Bullet(this.x, this.y - 25, 0, -1800, stats.damage, true, {
+        type: 'railgun',
+        color: secDef.color,
+        radius: beamW / 2,
+        life: 0.8,
+        pierce: 99
+      }));
+
+      particles.push(new Particle(this.x, this.y - 20, 0, 0, '#ffffff', 14, 0.25, 'ring'));
+      for (let p = 0; p < 12; p++) {
+        particles.push(new Particle(
+          this.x,
+          this.y - 15,
+          (Math.random() - 0.5) * 120,
+          -100 - Math.random() * 200,
+          secDef.color,
+          4,
+          0.35,
+          'spark'
+        ));
+      }
+      return true;
+    }
+
+    if (this.secondaryId === 'cluster') {
+      // 3. CLUSTER FLAK SHATTER CANNON
+      audio.playClusterFire();
+      [-0.15, 0, 0.15].forEach(ang => {
+        const vx = Math.sin(ang) * 480;
+        const vy = -Math.cos(ang) * 480;
+        bullets.push(new Bullet(this.x, this.y - 12, vx, vy, stats.shellDamage, true, {
+          type: 'cluster',
+          color: secDef.color,
+          radius: 7,
+          life: 0.7 + Math.random() * 0.15,
+          pierce: 1,
+          shrapnelCount: Math.round(stats.shrapnelCount / 3),
+          shrapnelDamage: stats.shrapnelDamage
+        }));
+      });
+      return true;
+    }
+
+    if (this.secondaryId === 'vortex') {
+      // 4. VOID VORTEX GRAVITATIONAL RIFT
+      audio.playVortexFire();
+      bullets.push(new Bullet(this.x, this.y - 20, 0, -140, stats.damage, true, {
+        type: 'vortex',
+        color: secDef.color,
+        radius: stats.radius,
+        life: 2.2,
+        pierce: 99
+      }));
+      return true;
+    }
+    return false;
   }
 
   fireWeapon(bullets, particles) {

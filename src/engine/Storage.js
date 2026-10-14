@@ -5,6 +5,14 @@ const DEFAULT_DATA = {
   shards: 100, // Starter bonus for first upgrade fun
   equippedShip: 'alpha_dart',
   unlockedShips: ['alpha_dart'],
+  equippedSecondary: 'seeker',
+  unlockedSecondaries: ['seeker', 'railgun', 'cluster'],
+  secondaryUpgrades: {
+    seeker: 1,
+    railgun: 1,
+    cluster: 1,
+    vortex: 1
+  },
   upgrades: {
     damage: 1,      // Base shot damage
     fireRate: 1,    // Shot frequency
@@ -84,11 +92,29 @@ export class Storage {
         }
       }
 
+      const safeSecondaryUpgrades = { ...DEFAULT_DATA.secondaryUpgrades };
+      if (parsed?.secondaryUpgrades && typeof parsed.secondaryUpgrades === 'object') {
+        for (const [key, defaultVal] of Object.entries(DEFAULT_DATA.secondaryUpgrades)) {
+          safeSecondaryUpgrades[key] = sanitizeNumber(parsed.secondaryUpgrades[key], defaultVal, 1);
+        }
+      }
+
+      const safeUnlockedSecondaries = Array.isArray(parsed?.unlockedSecondaries) && parsed.unlockedSecondaries.length > 0
+        ? [...new Set(parsed.unlockedSecondaries)]
+        : [...DEFAULT_DATA.unlockedSecondaries];
+
+      const safeEquippedSecondary = typeof parsed?.equippedSecondary === 'string' && safeUnlockedSecondaries.includes(parsed.equippedSecondary)
+        ? parsed.equippedSecondary
+        : safeUnlockedSecondaries[0] || 'seeker';
+
       return {
         ...DEFAULT_DATA,
         ...parsed,
         shards: safeShards,
         upgrades: safeUpgrades,
+        equippedSecondary: safeEquippedSecondary,
+        unlockedSecondaries: safeUnlockedSecondaries,
+        secondaryUpgrades: safeSecondaryUpgrades,
         arenaStats: safeArenaStats,
         sectors: safeSectors,
         settings: {
@@ -110,6 +136,11 @@ export class Storage {
         if (data.upgrades && typeof data.upgrades === 'object') {
           for (const key of Object.keys(data.upgrades)) {
             data.upgrades[key] = sanitizeNumber(data.upgrades[key], 1, key === 'drones' ? 0 : 1);
+          }
+        }
+        if (data.secondaryUpgrades && typeof data.secondaryUpgrades === 'object') {
+          for (const key of Object.keys(data.secondaryUpgrades)) {
+            data.secondaryUpgrades[key] = sanitizeNumber(data.secondaryUpgrades[key], 1, 1);
           }
         }
       }

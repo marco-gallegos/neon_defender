@@ -238,6 +238,127 @@ export class AudioManager {
     }
   }
 
+  // Secondary Weapon: Seeker Missiles Swarm
+  playMissileLaunch() {
+    if (!this.sfxEnabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      [0, 0.05, 0.1, 0.15].forEach((delay, idx) => {
+        const t = this.ctx.currentTime + delay;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(320 + idx * 80, t);
+        osc.frequency.exponentialRampToValueAtTime(800 + idx * 100, t + 0.12);
+
+        gain.gain.setValueAtTime(0.08, t);
+        gain.gain.linearRampToValueAtTime(0.001, t + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.12);
+      });
+    } catch (e) {
+      // Audio safety
+    }
+  }
+
+  // Secondary Weapon: Photon Railgun Piercing Beam
+  playRailgunFire() {
+    if (!this.sfxEnabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const t = this.ctx.currentTime;
+      // High-energy discharge
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(980, t);
+      osc.frequency.exponentialRampToValueAtTime(90, t + 0.22);
+      gain.gain.setValueAtTime(0.18, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.22);
+
+      // Low punch resonance
+      const subOsc = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      subOsc.type = 'triangle';
+      subOsc.frequency.setValueAtTime(240, t);
+      subOsc.frequency.exponentialRampToValueAtTime(40, t + 0.3);
+      subGain.gain.setValueAtTime(0.2, t);
+      subGain.gain.linearRampToValueAtTime(0.001, t + 0.3);
+
+      subOsc.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      subOsc.start(t);
+      subOsc.stop(t + 0.3);
+    } catch (e) {
+      // Audio safety
+    }
+  }
+
+  // Secondary Weapon: Cluster Flak
+  playClusterFire() {
+    if (!this.sfxEnabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const t = this.ctx.currentTime;
+      // Initial cannon shot
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(280, t);
+      osc.frequency.exponentialRampToValueAtTime(60, t + 0.18);
+      gain.gain.setValueAtTime(0.15, t);
+      gain.gain.linearRampToValueAtTime(0.001, t + 0.18);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.18);
+    } catch (e) {
+      // Audio safety
+    }
+  }
+
+  // Secondary Weapon: Void Vortex
+  playVortexFire() {
+    if (!this.sfxEnabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, t);
+      osc.frequency.exponentialRampToValueAtTime(450, t + 0.2);
+      osc.frequency.exponentialRampToValueAtTime(80, t + 0.45);
+      gain.gain.setValueAtTime(0.16, t);
+      gain.gain.linearRampToValueAtTime(0.001, t + 0.45);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.45);
+    } catch (e) {
+      // Audio safety
+    }
+  }
+
   // Boss warning alert
   playBossAlert() {
     if (!this.sfxEnabled) return;

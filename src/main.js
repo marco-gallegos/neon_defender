@@ -90,6 +90,12 @@ class Game {
     this.player = new Player(w, h, this.saveData);
     this.waveManager = new WaveManager(w, h, mode, sectorId);
 
+    this.timeScale = 1.0;
+    if (this.ui?.bossBarWrap) {
+      this.ui.bossBarWrap.classList.add('hidden');
+      this.ui.bossBarWrap.style.setProperty('display', 'none', 'important');
+    }
+
     this.state = 'PLAYING';
     this.ui.showScreen('hud');
 
@@ -215,17 +221,59 @@ class Game {
     const dt = Math.min(0.05, (currentTime - this.lastTime) / 1000);
     this.lastTime = currentTime;
 
+    // Bullet-Time Mechanic:
+    // When NOT touching/tapping the screen (finger released): slow-motion (0.25x speed)
+    // When touching/dragging/holding: full acceleration (1.0x speed)
+    let timeScale = 1.0;
+    if (this.state === 'PLAYING') {
+      const kb = this.input.getKeyboardMovement();
+      const isInteracting = this.input.isTouching || this.input.isPointerDown || (kb.dx !== 0 || kb.dy !== 0);
+      const targetScale = isInteracting ? 1.0 : 0.25;
+      this.timeScale = (this.timeScale ?? 1.0) + (targetScale - (this.timeScale ?? 1.0)) * Math.min(1, 14 * dt);
+      timeScale = this.timeScale;
+    } else {
+      this.timeScale = 1.0;
+    }
+
+    const simDt = dt * timeScale;
+
     // Update renderer effects (stars, scrolling grid, camera shake)
-    this.renderer.update(dt);
+    this.renderer.update(simDt);
 
     if (this.state === 'PLAYING') {
-      this.updateGame(dt);
+      this.updateGame(simDt);
     }
 
     // Render pass
     this.renderer.clear();
     this.renderGame();
+
+    // Subtle holographic time-dilation border when in slow-motion
+    if (this.state === 'PLAYING' && timeScale < 0.82) {
+      this.renderSlowMotionEffect(timeScale);
+    }
+
     this.renderer.restore();
+  }
+
+  renderSlowMotionEffect(scale) {
+    const ctx = this.renderer.ctx;
+    const w = this.renderer.width;
+    const h = this.renderer.height;
+    const intensity = Math.max(0, (1.0 - scale) / 0.75);
+
+    ctx.save();
+    // Glowing cyan edge aura
+    ctx.strokeStyle = `rgba(0, 240, 255, ${intensity * 0.35})`;
+    ctx.lineWidth = 5;
+    ctx.strokeRect(2.5, 2.5, w - 5, h - 5);
+
+    // Subtle status banner at bottom
+    ctx.font = '700 10.5px Orbitron, sans-serif';
+    ctx.fillStyle = `rgba(0, 240, 255, ${intensity * 0.8})`;
+    ctx.textAlign = 'center';
+    ctx.fillText('⏳ BULLET-TIME · TOUCH TO ENGAGE SPEED', w / 2, h - 92);
+    ctx.restore();
   }
 
   updateGame(dt) {
@@ -303,7 +351,7 @@ class Game {
     // Update Projectiles
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
-      const alive = b.update(dt, activeTargets);
+      const alive = b.update(dt, activeTargets, this.particles, this.bullets);
 
       // Bounds check
       if (!alive || b.x < -20 || b.x > w + 20 || b.y < -30 || b.y > h + 30) {
@@ -340,6 +388,9 @@ class Game {
 
         if (hit) {
           b.hits++;
+          if (typeof b.handleHit === 'function') {
+            b.handleHit(this.particles, this.bullets, activeTargets, this.floatingTexts);
+          }
           if (b.hits >= b.pierce) {
             this.bullets.splice(i, 1);
             continue;
