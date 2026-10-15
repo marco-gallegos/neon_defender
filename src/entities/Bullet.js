@@ -301,18 +301,116 @@ export class Bullet {
         ctx.fill();
       }
     } else {
-      // Enemy Hazard: Geometric pulsating diamond
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y - this.radius);
-      ctx.lineTo(this.x + this.radius, this.y);
-      ctx.lineTo(this.x, this.y + this.radius);
-      ctx.lineTo(this.x - this.radius, this.y);
-      ctx.closePath();
-      ctx.fill();
+      // Enemy Projectiles
+      if (this.type === 'missile') {
+        // Chasing Enemy Missile (Menacing rocket with delta fins and thruster exhaust)
+        const angle = Math.atan2(this.vy, this.vx);
+        ctx.translate(this.x, this.y);
+        ctx.rotate(angle);
 
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+        ctx.fillStyle = this.color || '#ff0055';
+        ctx.shadowColor = '#ff0055';
+        ctx.shadowBlur = 12;
+
+        // Missile Hull
+        ctx.beginPath();
+        ctx.moveTo(11, 0);
+        ctx.lineTo(-6, -4.5);
+        ctx.lineTo(-4, 0);
+        ctx.lineTo(-6, 4.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Delta stabilizer fins
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-1, -3);
+        ctx.lineTo(-7, -7);
+        ctx.moveTo(-1, 3);
+        ctx.lineTo(-7, 7);
+        ctx.stroke();
+
+        // Glowing Warhead Core
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(4, 0, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Exhaust flame
+        ctx.fillStyle = '#ff4400';
+        ctx.beginPath();
+        ctx.moveTo(-4, -2.5);
+        ctx.lineTo(-11, 0);
+        ctx.lineTo(-4, 2.5);
+        ctx.closePath();
+        ctx.fill();
+
+      } else if (this.type === 'pumpkin_bomb') {
+        // Jack-o'-Lantern Explosive Fireball
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.animAngle);
+
+        ctx.fillStyle = '#ff7700';
+        ctx.shadowColor = '#ff3300';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius + 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Jack-o'-lantern carved face silhouette
+        ctx.fillStyle = '#110200';
+        // Triangle eyes
+        ctx.beginPath();
+        ctx.moveTo(-3, -2);
+        ctx.lineTo(-1, -4);
+        ctx.lineTo(-1, -2);
+        ctx.moveTo(3, -2);
+        ctx.lineTo(1, -4);
+        ctx.lineTo(1, -2);
+        // Jagged toothy grin
+        ctx.moveTo(-4, 2);
+        ctx.lineTo(-2, 4);
+        ctx.lineTo(0, 2);
+        ctx.lineTo(2, 4);
+        ctx.lineTo(4, 2);
+        ctx.closePath();
+        ctx.fill();
+
+      } else if (this.type === 'stinger') {
+        // Cyber Wasp Piercing Needle
+        const angle = Math.atan2(this.vy, this.vx);
+        ctx.translate(this.x, this.y);
+        ctx.rotate(angle);
+
+        ctx.fillStyle = '#39ff14';
+        ctx.shadowColor = '#39ff14';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(9, 0);
+        ctx.lineTo(-6, -2);
+        ctx.lineTo(-3, 0);
+        ctx.lineTo(-6, 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-2, -1, 4, 2);
+
+      } else {
+        // Standard geometric pulsating diamond
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y - this.radius);
+        ctx.lineTo(this.x + this.radius, this.y);
+        ctx.lineTo(this.x, this.y + this.radius);
+        ctx.lineTo(this.x - this.radius, this.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     }
 
     ctx.restore();

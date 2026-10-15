@@ -2,9 +2,9 @@
 const STORAGE_KEY = 'neon_defender_savedata_v1';
 
 const DEFAULT_DATA = {
-  shards: 100, // Starter bonus for first upgrade fun
-  equippedShip: 'alpha_dart',
-  unlockedShips: ['alpha_dart'],
+  shards: 800, // Starter bonus for immediate fun testing of new ships & weapons
+  equippedShip: 'dracula_plane',
+  unlockedShips: ['alpha_dart', 'dracula_plane', 'bati_plane', 'halloween_reaper'],
   equippedSecondary: 'seeker',
   unlockedSecondaries: ['seeker', 'railgun', 'cluster'],
   secondaryUpgrades: {
@@ -107,10 +107,20 @@ export class Storage {
         ? parsed.equippedSecondary
         : safeUnlockedSecondaries[0] || 'seeker';
 
+      const safeUnlockedShips = Array.isArray(parsed?.unlockedShips) && parsed.unlockedShips.length > 0
+        ? [...new Set([...parsed.unlockedShips, 'dracula_plane', 'bati_plane', 'halloween_reaper'])]
+        : [...DEFAULT_DATA.unlockedShips];
+
+      const safeEquippedShip = typeof parsed?.equippedShip === 'string' && safeUnlockedShips.includes(parsed.equippedShip)
+        ? parsed.equippedShip
+        : 'dracula_plane';
+
       return {
         ...DEFAULT_DATA,
         ...parsed,
         shards: safeShards,
+        equippedShip: safeEquippedShip,
+        unlockedShips: safeUnlockedShips,
         upgrades: safeUpgrades,
         equippedSecondary: safeEquippedSecondary,
         unlockedSecondaries: safeUnlockedSecondaries,

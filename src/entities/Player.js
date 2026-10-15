@@ -3,6 +3,7 @@ import { Bullet } from './Bullet.js';
 import { Particle, FloatingText } from './Particle.js';
 import { SHIPS, UPGRADES, SECONDARY_WEAPONS } from '../systems/UpgradeSystem.js';
 import { audio } from '../engine/Audio.js';
+import { Renderer } from '../engine/Renderer.js';
 
 export class Player {
   constructor(canvasWidth, canvasHeight, saveState) {
@@ -503,49 +504,9 @@ export class Player {
       }
     }
 
-    // Geometry Dash Style Neon Ship Drawing
-    ctx.shadowColor = this.shipDef.color;
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = '#060919';
-    ctx.strokeStyle = this.shipDef.color;
-    ctx.lineWidth = 2.2;
-
-    // Wing & Hull Shape
-    ctx.beginPath();
-    ctx.moveTo(0, -this.radius - 4); // Apex nose
-    ctx.lineTo(this.radius + 6, this.radius + 2); // Right wing tip
-    ctx.lineTo(this.radius * 0.45, this.radius * 0.5); // Right inner nook
-    ctx.lineTo(0, this.radius); // Engine center
-    ctx.lineTo(-this.radius * 0.45, this.radius * 0.5); // Left inner nook
-    ctx.lineTo(-this.radius - 6, this.radius + 2); // Left wing tip
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Ship Cockpit Diamond (Geometry Dash cube look)
-    ctx.fillStyle = this.shipDef.secondaryColor;
-    ctx.beginPath();
-    ctx.moveTo(0, -this.radius * 0.35);
-    ctx.lineTo(6, 2);
-    ctx.lineTo(0, 8);
-    ctx.lineTo(-6, 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Pulsing Engine Thrusters
+    // Use custom vector drawing based on equipped ship model
     const thrusterScale = 1 + Math.sin(this.thrusterGlow) * 0.3;
-    ctx.fillStyle = '#ff7700';
-    ctx.shadowColor = '#ff3300';
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.moveTo(-4, this.radius);
-    ctx.lineTo(0, this.radius + 10 * thrusterScale);
-    ctx.lineTo(4, this.radius);
-    ctx.closePath();
-    ctx.fill();
+    Renderer.drawShip(ctx, this.shipDef, this.radius, thrusterScale);
 
     ctx.restore();
 
@@ -579,6 +540,41 @@ export class Player {
         ctx.fillRect(-1.5, -1.5, 3, 3);
         ctx.restore();
       }
+    }
+  }
+
+  // Ship passive kill perks (Dracula Vampiric lifesteal, Bati shield pulse, Reaper soul harvest)
+  onEnemyKilled(enemy, floatingTexts) {
+    if (this.isDead || !enemy) return;
+
+    if (this.shipDef.id === 'dracula_plane') {
+      // Vampiric Blood Siphon perk
+      const healAmount = 8;
+      if (this.hp < this.maxHp) {
+        this.hp = Math.min(this.maxHp, this.hp + healAmount);
+        if (floatingTexts && Math.random() < 0.6) {
+          floatingTexts.push(new FloatingText(this.x, this.y - 20, `+${healAmount} BLOOD SIPHON`, '#ff0055', true));
+        }
+      } else if (this.shield < this.maxShield) {
+        this.shield = Math.min(this.maxShield, this.shield + 6);
+      }
+    } else if (this.shipDef.id === 'bati_plane') {
+      // Bati Tactical Shield Overcharge
+      if (this.shield < this.maxShield) {
+        this.shield = Math.min(this.maxShield, this.shield + 5);
+        if (floatingTexts && Math.random() < 0.4) {
+          floatingTexts.push(new FloatingText(this.x, this.y - 20, '+5 BAT-SHIELD', '#ffd60a', true));
+        }
+      }
+    } else if (this.shipDef.id === 'halloween_reaper') {
+      // Soul Harvest: minor HP and EMP recharge
+      if (this.hp < this.maxHp && Math.random() < 0.5) {
+        this.hp = Math.min(this.maxHp, this.hp + 5);
+        if (floatingTexts && Math.random() < 0.4) {
+          floatingTexts.push(new FloatingText(this.x, this.y - 20, '+5 SOUL SIPHON', '#00ff88', true));
+        }
+      }
+      this.empCooldown = Math.max(0, this.empCooldown - 0.25);
     }
   }
 }

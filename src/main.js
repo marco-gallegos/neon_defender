@@ -327,6 +327,9 @@ class Game {
       // Check enemy death
       if (enemy.dead) {
         enemy.onDestroy(this.particles, this.items, this.getLootMultiplier());
+        if (typeof this.player.onEnemyKilled === 'function') {
+          this.player.onEnemyKilled(enemy, this.floatingTexts);
+        }
         this.runKills += 1;
         this.runScore += (Number(enemy.score) || 50);
         this.enemies.splice(i, 1);
@@ -351,7 +354,9 @@ class Game {
     // Update Projectiles
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
-      const alive = b.update(dt, activeTargets, this.particles, this.bullets);
+      // Player projectiles target enemies; Enemy chasing missiles target player!
+      const targets = b.isPlayer ? activeTargets : (this.player && !this.player.isDead ? [this.player] : []);
+      const alive = b.update(dt, targets, this.particles, this.bullets);
 
       // Bounds check
       if (!alive || b.x < -20 || b.x > w + 20 || b.y < -30 || b.y > h + 30) {
@@ -359,12 +364,31 @@ class Game {
         continue;
       }
 
-      // Player bullet collisions vs Enemies and Boss
+      // Player bullet collisions vs Enemies, Boss, and Shootable Enemy Missiles
       if (b.isPlayer) {
         let hit = false;
 
+        // Shoot down incoming enemy missiles!
+        for (let m = this.bullets.length - 1; m >= 0; m--) {
+          const eb = this.bullets[m];
+          if (!eb.isPlayer && eb.type === 'missile') {
+            const md = Math.hypot(b.x - eb.x, b.y - eb.y);
+            if (md < b.radius + eb.radius + 4) {
+              eb.dead = true;
+              if (typeof eb.handleDestruction === 'function') {
+                eb.handleDestruction(this.particles, this.bullets, [this.player]);
+              }
+              this.bullets.splice(m, 1);
+              if (m < i) i--;
+              hit = true;
+              this.floatingTexts.push(new FloatingText(b.x, b.y - 10, 'INTERCEPT!', '#39ff14'));
+              break;
+            }
+          }
+        }
+
         // Check boss collision
-        if (this.waveManager.boss && !this.waveManager.boss.dead && !this.waveManager.boss.isDying) {
+        if (!hit && this.waveManager.boss && !this.waveManager.boss.dead && !this.waveManager.boss.isDying) {
           const boss = this.waveManager.boss;
           const d = Math.hypot(b.x - boss.x, b.y - boss.y);
           if (d < b.radius + boss.radius) {

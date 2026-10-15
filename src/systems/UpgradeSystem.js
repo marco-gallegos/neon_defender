@@ -60,6 +60,51 @@ export const SHIPS = {
       shardBonus: 1.5
     },
     perkText: '+50% Shard Drops & High Crits'
+  },
+  dracula_plane: {
+    id: 'dracula_plane',
+    name: "DRACULA'S WING",
+    desc: 'Gothic vampire supersonic jet with scalloped bat-wings and twin blood-fangs.',
+    cost: 1500,
+    color: '#ff0055',
+    secondaryColor: '#ff2277',
+    stats: {
+      speedMult: 1.12,
+      damageMult: 1.4,
+      shieldMult: 1.2,
+      shardBonus: 1.35
+    },
+    perkText: 'Vampiric Drain (+8 HP on kill) & Crimson Cannons'
+  },
+  bati_plane: {
+    id: 'bati_plane',
+    name: 'BATI PLANE',
+    desc: 'Iconic stealth batwing interceptor with dual cowl ears and reinforced armor.',
+    cost: 1800,
+    color: '#ffe600',
+    secondaryColor: '#00f0ff',
+    stats: {
+      speedMult: 1.18,
+      damageMult: 1.35,
+      shieldMult: 1.5,
+      shardBonus: 1.3
+    },
+    perkText: 'Stealth Batwing (+50% Shield Matrix & Dual Auto-Darts)'
+  },
+  halloween_reaper: {
+    id: 'halloween_reaper',
+    name: 'HALLOWEEN REAPER',
+    desc: 'Haunted phantom jet with scythe wingblades and spectral green afterburners.',
+    cost: 2200,
+    color: '#39ff14',
+    secondaryColor: '#9d00ff',
+    stats: {
+      speedMult: 1.22,
+      damageMult: 1.45,
+      shieldMult: 1.15,
+      shardBonus: 1.6
+    },
+    perkText: 'Spectre Drive (+22% Speed & +60% Shard Jackpot)'
   }
 };
 

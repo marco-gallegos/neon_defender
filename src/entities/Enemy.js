@@ -6,7 +6,7 @@ import { audio } from '../engine/Audio.js';
 
 export const ENEMY_TYPES = {
   SCOUT: {
-    name: 'Scout Triangle',
+    name: 'Scout Dart',
     hp: 20,
     speed: 130,
     color: '#00f0ff',
@@ -22,6 +22,78 @@ export const ENEMY_TYPES = {
     score: 90,
     shards: 4,
     radius: 18
+  },
+  BUG_SCARAB: {
+    name: 'Cyber Scarab',
+    hp: 85,
+    speed: 95,
+    color: '#00ff88',
+    score: 140,
+    shards: 6,
+    radius: 20
+  },
+  BUG_WASP: {
+    name: 'Neon Hornet',
+    hp: 55,
+    speed: 175,
+    color: '#ffe600',
+    score: 160,
+    shards: 7,
+    radius: 16
+  },
+  DEVIL: {
+    name: 'Neon Diablo',
+    hp: 110,
+    speed: 85,
+    color: '#ff0033',
+    score: 220,
+    shards: 9,
+    radius: 22
+  },
+  HALLOWEEN_PUMPKIN: {
+    name: 'Jack-o-Lantern',
+    hp: 75,
+    speed: 100,
+    color: '#ff7700',
+    score: 150,
+    shards: 6,
+    radius: 20
+  },
+  HALLOWEEN_BAT: {
+    name: 'Dracula Bat',
+    hp: 60,
+    speed: 165,
+    color: '#ff0055',
+    score: 170,
+    shards: 7,
+    radius: 18
+  },
+  HALLOWEEN_SKULL: {
+    name: 'Cyber Skull',
+    hp: 95,
+    speed: 95,
+    color: '#39ff14',
+    score: 190,
+    shards: 8,
+    radius: 20
+  },
+  PLANE_VIPER: {
+    name: 'Stealth Fighter',
+    hp: 70,
+    speed: 170,
+    color: '#3a86ff',
+    score: 180,
+    shards: 8,
+    radius: 18
+  },
+  PLANE_BOMBER: {
+    name: 'Heavy Bomber',
+    hp: 160,
+    speed: 65,
+    color: '#b5179e',
+    score: 260,
+    shards: 12,
+    radius: 26
   },
   RHOMBUS: {
     name: 'Heavy Rhombus',
@@ -67,9 +139,9 @@ export class Enemy {
     this.score = this.def.score;
     this.shardReward = this.def.shards;
 
-    this.shootTimer = 1.0 + Math.random() * 2.0;
+    this.shootTimer = 0.8 + Math.random() * 1.8;
     this.angle = 0;
-    this.rotSpeed = (Math.random() - 0.5) * 4;
+    this.rotSpeed = (Math.random() - 0.5) * 3;
     this.age = 0;
     this.startX = x;
     this.dead = false;
@@ -97,21 +169,38 @@ export class Enemy {
       if (this.y < 120) {
         this.y += this.speed * dt;
       } else {
-        // Hover and track
         this.x += Math.sin(this.age * 2) * 40 * dt;
       }
-    } else if (this.typeKey === 'INTERCEPTOR') {
+    } else if (this.typeKey === 'INTERCEPTOR' || this.typeKey === 'PLANE_VIPER') {
       // Swerve towards player X
       this.y += this.speed * dt;
       const dx = player.x - this.x;
-      this.x += Math.sign(dx) * Math.min(Math.abs(dx), 110 * dt);
+      this.x += Math.sign(dx) * Math.min(Math.abs(dx), 130 * dt);
+    } else if (this.typeKey === 'BUG_WASP' || this.typeKey === 'HALLOWEEN_BAT') {
+      // Swooping erratic flight
+      this.y += this.speed * dt;
+      this.x = this.startX + Math.sin(this.age * 5.0) * 70;
+    } else if (this.typeKey === 'BUG_SCARAB' || this.typeKey === 'PLANE_BOMBER') {
+      // Steady heavy descent
+      this.y += this.speed * dt;
+      this.x = this.startX + Math.sin(this.age * 1.2) * 30;
+    } else if (this.typeKey === 'DEVIL' || this.typeKey === 'HALLOWEEN_SKULL') {
+      // Hovering menacing sway
+      this.y += this.speed * dt;
+      this.x = this.startX + Math.sin(this.age * 2.2) * 45;
+    } else if (this.typeKey === 'HALLOWEEN_PUMPKIN') {
+      // Bouncing bob motion
+      this.y += this.speed * dt;
+      this.x = this.startX + Math.sin(this.age * 3.0) * 40;
+    } else {
+      this.y += this.speed * dt;
     }
 
     // Shooting logic
     this.shootTimer -= dt;
     if (this.shootTimer <= 0 && this.y > 20 && this.y < 580) {
       this.fire(player, bullets);
-      this.shootTimer = 1.8 + Math.random() * 2.2;
+      this.shootTimer = 1.6 + Math.random() * 2.0;
     }
 
     return !this.dead;
@@ -120,7 +209,97 @@ export class Enemy {
   fire(player, bullets) {
     audio.playShoot(false);
 
-    if (this.typeKey === 'SCOUT') {
+    if (this.typeKey === 'DEVIL') {
+      // NEON DIABLO: Fires Chasing Hellfire Missiles tracking the player!
+      bullets.push(new Bullet(this.x, this.y + this.radius + 2, 0, 220, 20, false, {
+        color: '#ff0033',
+        type: 'missile',
+        homing: true,
+        radius: 5.5,
+        life: 3.5
+      }));
+      // Flanking hellfire orbs
+      bullets.push(new Bullet(this.x - 12, this.y + 10, -50, 200, 14, false, { color: '#ff3300' }));
+      bullets.push(new Bullet(this.x + 12, this.y + 10, 50, 200, 14, false, { color: '#ff3300' }));
+
+    } else if (this.typeKey === 'PLANE_VIPER') {
+      // STEALTH FIGHTER: Dual air-to-air chasing missiles flanking out and tracking
+      bullets.push(new Bullet(this.x - 10, this.y + 6, -70, 220, 16, false, {
+        color: '#3a86ff',
+        type: 'missile',
+        homing: true,
+        radius: 5,
+        life: 3.2
+      }));
+      bullets.push(new Bullet(this.x + 10, this.y + 6, 70, 220, 16, false, {
+        color: '#3a86ff',
+        type: 'missile',
+        homing: true,
+        radius: 5,
+        life: 3.2
+      }));
+
+    } else if (this.typeKey === 'HALLOWEEN_BAT') {
+      // DRACULA BAT: Fires Supersonic Blood Missile with chasing tracking!
+      bullets.push(new Bullet(this.x, this.y + this.radius, 0, 230, 18, false, {
+        color: '#ff0055',
+        type: 'missile',
+        homing: true,
+        radius: 5,
+        life: 3.0
+      }));
+
+    } else if (this.typeKey === 'BUG_WASP') {
+      // NEON HORNET: Piercing stinger aimed at player + chance of tracking stinger
+      const angle = Math.atan2(player.y - this.y, player.x - this.x);
+      bullets.push(new Bullet(this.x, this.y + this.radius, Math.cos(angle) * 320, Math.sin(angle) * 320, 18, false, {
+        color: '#39ff14',
+        type: 'stinger',
+        radius: 4.5
+      }));
+      if (Math.random() < 0.4) {
+        bullets.push(new Bullet(this.x, this.y + this.radius, 0, 200, 15, false, {
+          color: '#ffe600',
+          type: 'missile',
+          homing: true,
+          radius: 4.5,
+          life: 2.8
+        }));
+      }
+
+    } else if (this.typeKey === 'HALLOWEEN_PUMPKIN') {
+      // JACK-O-LANTERN: Lobs explosive pumpkin bomb
+      bullets.push(new Bullet(this.x, this.y + this.radius, (Math.random() - 0.5) * 60, 190, 22, false, {
+        color: '#ff7700',
+        type: 'pumpkin_bomb',
+        radius: 6,
+        life: 3.5
+      }));
+
+    } else if (this.typeKey === 'PLANE_BOMBER') {
+      // HEAVY BOMBER: Heavy carpet spread + 1 chasing cruise missile
+      bullets.push(new Bullet(this.x - 18, this.y + 12, -40, 200, 18, false, { color: '#b5179e' }));
+      bullets.push(new Bullet(this.x + 18, this.y + 12, 40, 200, 18, false, { color: '#b5179e' }));
+      bullets.push(new Bullet(this.x, this.y + 16, 0, 180, 22, false, {
+        color: '#ff0055',
+        type: 'missile',
+        homing: true,
+        radius: 6,
+        life: 4.0
+      }));
+
+    } else if (this.typeKey === 'BUG_SCARAB') {
+      // CYBER SCARAB: Twin pincer plasma shots
+      bullets.push(new Bullet(this.x - 8, this.y + this.radius, -25, 230, 16, false, { color: '#00ff88' }));
+      bullets.push(new Bullet(this.x + 8, this.y + this.radius, 25, 230, 16, false, { color: '#00ff88' }));
+
+    } else if (this.typeKey === 'HALLOWEEN_SKULL') {
+      // CYBER SKULL: 3-way soul spread
+      bullets.push(new Bullet(this.x, this.y + this.radius, 0, 220, 16, false, { color: '#39ff14' }));
+      bullets.push(new Bullet(this.x, this.y + this.radius, -70, 200, 16, false, { color: '#39ff14' }));
+      bullets.push(new Bullet(this.x, this.y + this.radius, 70, 200, 16, false, { color: '#39ff14' }));
+
+    } else if (this.typeKey === 'SCOUT') {
       // Single downward bullet
       bullets.push(new Bullet(this.x, this.y + this.radius, 0, 240, 15, false, {
         color: this.color, radius: 4
@@ -217,7 +396,12 @@ export class Enemy {
 
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.rotate(this.angle);
+
+    // Some types rotate with angle, others face downwards
+    const nonRotating = ['PLANE_VIPER', 'PLANE_BOMBER', 'BUG_SCARAB', 'BUG_WASP', 'DEVIL', 'HALLOWEEN_BAT', 'HALLOWEEN_PUMPKIN', 'HALLOWEEN_SKULL'];
+    if (!nonRotating.includes(this.typeKey)) {
+      ctx.rotate(this.angle);
+    }
 
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 10;
@@ -225,7 +409,395 @@ export class Enemy {
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2.0;
 
-    if (this.typeKey === 'SCOUT') {
+    const r = this.radius;
+
+    if (this.typeKey === 'DEVIL') {
+      // NEON DIABLO: Horned devil face with fanged jaw & glowing amber eyes
+      ctx.beginPath();
+      // Chin and jaw
+      ctx.moveTo(0, r * 1.1);
+      ctx.lineTo(r * 0.5, r * 0.5);
+      // Cheeks to Horn roots
+      ctx.lineTo(r * 0.75, 0);
+      // Right curved demon horn
+      ctx.quadraticCurveTo(r * 1.3, -r * 0.6, r * 1.1, -r * 1.3);
+      ctx.quadraticCurveTo(r * 0.7, -r * 0.8, r * 0.35, -r * 0.5);
+      // Forehead
+      ctx.lineTo(0, -r * 0.3);
+      // Left curved demon horn
+      ctx.lineTo(-r * 0.35, -r * 0.5);
+      ctx.quadraticCurveTo(-r * 0.7, -r * 0.8, -r * 1.1, -r * 1.3);
+      ctx.quadraticCurveTo(-r * 1.3, -r * 0.6, -r * 0.75, 0);
+      ctx.lineTo(-r * 0.5, r * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Glowing Angled Demonic Eyes
+      ctx.fillStyle = '#ffe600';
+      ctx.shadowColor = '#ffe600';
+      ctx.shadowBlur = 8;
+      // Right eye
+      ctx.beginPath();
+      ctx.moveTo(2, -r * 0.05);
+      ctx.lineTo(8, -r * 0.2);
+      ctx.lineTo(3, -r * 0.22);
+      ctx.closePath();
+      ctx.fill();
+      // Left eye
+      ctx.beginPath();
+      ctx.moveTo(-2, -r * 0.05);
+      ctx.lineTo(-8, -r * 0.2);
+      ctx.lineTo(-3, -r * 0.22);
+      ctx.closePath();
+      ctx.fill();
+
+      // Fanged Grin
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-7, r * 0.4);
+      ctx.lineTo(-4, r * 0.65);
+      ctx.lineTo(0, r * 0.45);
+      ctx.lineTo(4, r * 0.65);
+      ctx.lineTo(7, r * 0.4);
+      ctx.stroke();
+
+    } else if (this.typeKey === 'BUG_SCARAB') {
+      // CYBER SCARAB: Armored beetle with mandibles & twitching robotic legs
+      const legTwitch = Math.sin(this.age * 12) * 3;
+
+      // 6 Robotic bug legs
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 1.8;
+      for (let i = -1; i <= 1; i++) {
+        const ly = i * (r * 0.5);
+        // Right legs
+        ctx.beginPath();
+        ctx.moveTo(r * 0.7, ly);
+        ctx.lineTo(r * 1.35, ly - 4 + legTwitch * (i === 0 ? -1 : 1));
+        ctx.lineTo(r * 1.6, ly + 8);
+        ctx.stroke();
+        // Left legs
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.7, ly);
+        ctx.lineTo(-r * 1.35, ly - 4 - legTwitch * (i === 0 ? -1 : 1));
+        ctx.lineTo(-r * 1.6, ly + 8);
+        ctx.stroke();
+      }
+
+      // Mandible pincers at front
+      ctx.fillStyle = '#0a0d1e';
+      ctx.beginPath();
+      ctx.moveTo(r * 0.35, r * 0.8);
+      ctx.quadraticCurveTo(r * 0.8, r * 1.3, 2, r * 1.4);
+      ctx.lineTo(r * 0.15, r * 0.9);
+      ctx.moveTo(-r * 0.35, r * 0.8);
+      ctx.quadraticCurveTo(-r * 0.8, r * 1.3, -2, r * 1.4);
+      ctx.lineTo(-r * 0.15, r * 0.9);
+      ctx.stroke();
+
+      // Carapace Body
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.85, r * 1.05, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Shell split line & segment ribs
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.9);
+      ctx.lineTo(0, r * 0.8);
+      ctx.moveTo(-r * 0.6, -r * 0.2);
+      ctx.lineTo(r * 0.6, -r * 0.2);
+      ctx.stroke();
+
+      // Glowing cyber eyes
+      ctx.fillStyle = '#ffe600';
+      ctx.fillRect(-5, r * 0.55, 3, 3);
+      ctx.fillRect(2, r * 0.55, 3, 3);
+
+    } else if (this.typeKey === 'BUG_WASP') {
+      // NEON HORNET: Flapping translucent wings and lethal stinger
+      const wingSpread = Math.cos(this.age * 26) * (r * 1.4);
+
+      // Flapping wings
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = 'rgba(255, 230, 0, 0.25)';
+      ctx.lineWidth = 1.3;
+      // Right wing
+      ctx.beginPath();
+      ctx.moveTo(3, -r * 0.2);
+      ctx.quadraticCurveTo(r * 1.2, -r * 1.1, wingSpread, -r * 0.3);
+      ctx.quadraticCurveTo(r * 0.8, 0, 3, 0);
+      ctx.fill();
+      ctx.stroke();
+      // Left wing
+      ctx.beginPath();
+      ctx.moveTo(-3, -r * 0.2);
+      ctx.quadraticCurveTo(-r * 1.2, -r * 1.1, -wingSpread, -r * 0.3);
+      ctx.quadraticCurveTo(-r * 0.8, 0, -3, 0);
+      ctx.fill();
+      ctx.stroke();
+
+      // Wasp Thorax & Striped Abdomen
+      ctx.fillStyle = '#0a0d1e';
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 2.0;
+
+      // Abdomen & sharp Stinger
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.5, -r * 0.1);
+      ctx.lineTo(r * 0.5, -r * 0.1);
+      ctx.quadraticCurveTo(r * 0.6, r * 0.6, 0, r * 1.35); // Sharp stinger tip!
+      ctx.quadraticCurveTo(-r * 0.6, r * 0.6, -r * 0.5, -r * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Yellow neon warning stripes
+      ctx.strokeStyle = '#ffe600';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.4, r * 0.25);
+      ctx.lineTo(r * 0.4, r * 0.25);
+      ctx.moveTo(-r * 0.3, r * 0.6);
+      ctx.lineTo(r * 0.3, r * 0.6);
+      ctx.stroke();
+
+      // Head
+      ctx.fillStyle = '#0a0d1e';
+      ctx.strokeStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.45, r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Red compound eyes
+      ctx.fillStyle = '#ff0044';
+      ctx.beginPath();
+      ctx.arc(-4, -r * 0.5, 2.5, 0, Math.PI * 2);
+      ctx.arc(4, -r * 0.5, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (this.typeKey === 'HALLOWEEN_PUMPKIN') {
+      // JACK-O'-LANTERN: Carved pumpkin with glowing toothy smile
+      // Green stem on top
+      ctx.fillStyle = '#39ff14';
+      ctx.strokeStyle = '#39ff14';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-2, -r * 0.85);
+      ctx.quadraticCurveTo(-4, -r * 1.25, 3, -r * 1.3);
+      ctx.lineTo(3, -r * 0.85);
+      ctx.fill();
+
+      // Pumpkin ribbed lobes
+      ctx.fillStyle = '#0f0500';
+      ctx.strokeStyle = '#ff7700';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.05, r * 0.9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Pumpkin interior glow
+      ctx.fillStyle = '#ffcc00';
+      ctx.shadowColor = '#ff5500';
+      ctx.shadowBlur = 12;
+
+      // Triangle carved eyes
+      ctx.beginPath();
+      // Left eye
+      ctx.moveTo(-r * 0.5, -r * 0.3);
+      ctx.lineTo(-r * 0.2, -r * 0.3);
+      ctx.lineTo(-r * 0.35, -r * 0.05);
+      ctx.closePath();
+      // Right eye
+      ctx.moveTo(r * 0.5, -r * 0.3);
+      ctx.lineTo(r * 0.2, -r * 0.3);
+      ctx.lineTo(r * 0.35, -r * 0.05);
+      ctx.closePath();
+      // Triangle nose
+      ctx.moveTo(0, -r * 0.05);
+      ctx.lineTo(-r * 0.12, r * 0.15);
+      ctx.lineTo(r * 0.12, r * 0.15);
+      ctx.closePath();
+      ctx.fill();
+
+      // Sinister carved toothy smile
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.65, r * 0.25);
+      ctx.lineTo(-r * 0.45, r * 0.5);
+      ctx.lineTo(-r * 0.25, r * 0.3);
+      ctx.lineTo(0, r * 0.55);
+      ctx.lineTo(r * 0.25, r * 0.3);
+      ctx.lineTo(r * 0.45, r * 0.5);
+      ctx.lineTo(r * 0.65, r * 0.25);
+      ctx.lineTo(r * 0.45, r * 0.38);
+      ctx.lineTo(r * 0.25, r * 0.22);
+      ctx.lineTo(0, r * 0.4);
+      ctx.lineTo(-r * 0.25, r * 0.22);
+      ctx.lineTo(-r * 0.45, r * 0.38);
+      ctx.closePath();
+      ctx.fill();
+
+    } else if (this.typeKey === 'HALLOWEEN_BAT') {
+      // DRACULA BAT: Flapping scalloped wings and vampire ears
+      const wingFlap = Math.sin(this.age * 12) * 5;
+
+      ctx.beginPath();
+      // Bat head & ears
+      ctx.moveTo(0, r * 0.4);
+      ctx.lineTo(4, 0);
+      ctx.lineTo(6, -r * 0.8); // Right ear
+      ctx.lineTo(2, -r * 0.4);
+      // Wing right
+      ctx.quadraticCurveTo(r * 0.8, -r * 0.8 + wingFlap, r * 1.5, -r * 0.3 + wingFlap);
+      // Scalloped arches underneath
+      ctx.quadraticCurveTo(r * 1.1, r * 0.1, r * 0.8, r * 0.4 + wingFlap * 0.5);
+      ctx.quadraticCurveTo(r * 0.5, r * 0.3, 4, r * 0.7);
+      // Bottom tail
+      ctx.lineTo(0, r * 0.9);
+      // Mirrored Left side
+      ctx.lineTo(-4, r * 0.7);
+      ctx.quadraticCurveTo(-r * 0.5, r * 0.3, -r * 0.8, r * 0.4 + wingFlap * 0.5);
+      ctx.quadraticCurveTo(-r * 1.1, r * 0.1, -r * 1.5, -r * 0.3 + wingFlap);
+      ctx.quadraticCurveTo(-r * 0.8, -r * 0.8 + wingFlap, -2, -r * 0.4);
+      ctx.lineTo(-6, -r * 0.8); // Left ear
+      ctx.lineTo(-4, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Glowing crimson eyes
+      ctx.fillStyle = '#ff0033';
+      ctx.shadowColor = '#ff0033';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(-3, -r * 0.1, 1.8, 0, Math.PI * 2);
+      ctx.arc(3, -r * 0.1, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (this.typeKey === 'HALLOWEEN_SKULL') {
+      // CYBER SKULL: Glowing neon skull with metal jaw
+      ctx.beginPath();
+      // Cranium dome
+      ctx.arc(0, -r * 0.25, r * 0.75, Math.PI, 0, false);
+      // Cheekbone step
+      ctx.lineTo(r * 0.65, r * 0.15);
+      ctx.lineTo(r * 0.4, r * 0.25);
+      // Upper jaw
+      ctx.lineTo(r * 0.35, r * 0.75);
+      ctx.lineTo(-r * 0.35, r * 0.75);
+      ctx.lineTo(-r * 0.4, r * 0.25);
+      ctx.lineTo(-r * 0.65, r * 0.15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Sunken Glowing Eye Sockets
+      ctx.fillStyle = '#00ff88';
+      ctx.shadowColor = '#00ff88';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.ellipse(-r * 0.3, -r * 0.2, 4.5, 6, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(r * 0.3, -r * 0.2, 4.5, 6, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Nose cavity
+      ctx.fillStyle = '#0a0d1e';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(2.5, 5);
+      ctx.lineTo(-2.5, 5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Teeth grid
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.25, r * 0.5);
+      ctx.lineTo(r * 0.25, r * 0.5);
+      ctx.moveTo(-r * 0.12, r * 0.35);
+      ctx.lineTo(-r * 0.12, r * 0.65);
+      ctx.moveTo(0, r * 0.35);
+      ctx.lineTo(0, r * 0.65);
+      ctx.moveTo(r * 0.12, r * 0.35);
+      ctx.lineTo(r * 0.12, r * 0.65);
+      ctx.stroke();
+
+    } else if (this.typeKey === 'PLANE_VIPER') {
+      // STEALTH FIGHTER: Delta wings, nose cone, and twin tail fins
+      ctx.beginPath();
+      // Nose cone
+      ctx.moveTo(0, r * 1.3);
+      ctx.lineTo(4, r * 0.4);
+      // Delta wing right with missile rails
+      ctx.lineTo(r * 1.3, -r * 0.2);
+      ctx.lineTo(r * 1.35, -r * 0.5);
+      ctx.lineTo(r * 0.5, -r * 0.5);
+      // Twin engine rear
+      ctx.lineTo(r * 0.25, -r * 0.9);
+      ctx.lineTo(0, -r * 0.7);
+      ctx.lineTo(-r * 0.25, -r * 0.9);
+      // Delta wing left
+      ctx.lineTo(-r * 0.5, -r * 0.5);
+      ctx.lineTo(-r * 1.35, -r * 0.5);
+      ctx.lineTo(-r * 1.3, -r * 0.2);
+      ctx.lineTo(-4, r * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Cockpit Canopy
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.ellipse(0, r * 0.2, 3, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Twin Jet Exhaust Flares
+      ctx.fillStyle = '#ff7700';
+      ctx.fillRect(-r * 0.35, -r * 1.1, 3, 5);
+      ctx.fillRect(r * 0.35 - 3, -r * 1.1, 3, 5);
+
+    } else if (this.typeKey === 'PLANE_BOMBER') {
+      // HEAVY BOMBER: Massive flying wing stealth bomber
+      ctx.beginPath();
+      // Nose
+      ctx.moveTo(0, r * 0.9);
+      ctx.lineTo(r * 0.8, r * 0.2);
+      // Extended outer wingtips
+      ctx.lineTo(r * 1.6, -r * 0.3);
+      ctx.lineTo(r * 1.5, -r * 0.8);
+      // Serrated stealth rear edge
+      ctx.lineTo(r * 0.8, -r * 0.4);
+      ctx.lineTo(r * 0.4, -r * 0.7);
+      ctx.lineTo(0, -r * 0.4);
+      ctx.lineTo(-r * 0.4, -r * 0.7);
+      ctx.lineTo(-r * 0.8, -r * 0.4);
+      ctx.lineTo(-r * 1.5, -r * 0.8);
+      ctx.lineTo(-r * 1.6, -r * 0.3);
+      ctx.lineTo(-r * 0.8, r * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Stealth Panel facet lines
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(0, r * 0.6);
+      ctx.lineTo(r * 0.5, -r * 0.2);
+      ctx.lineTo(r * 0.8, -r * 0.2);
+      ctx.moveTo(0, r * 0.6);
+      ctx.lineTo(-r * 0.5, -r * 0.2);
+      ctx.lineTo(-r * 0.8, -r * 0.2);
+      ctx.stroke();
+
+    } else if (this.typeKey === 'SCOUT') {
       // Sharp neon triangle
       ctx.beginPath();
       ctx.moveTo(0, this.radius);
@@ -240,10 +812,10 @@ export class Enemy {
       const teeth = 8;
       ctx.beginPath();
       for (let i = 0; i < teeth * 2; i++) {
-        const r = (i % 2 === 0) ? this.radius : this.radius * 0.55;
+        const r2 = (i % 2 === 0) ? this.radius : this.radius * 0.55;
         const a = (i * Math.PI) / teeth;
-        const px = Math.cos(a) * r;
-        const py = Math.sin(a) * r;
+        const px = Math.cos(a) * r2;
+        const py = Math.sin(a) * r2;
         if (i === 0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
       }

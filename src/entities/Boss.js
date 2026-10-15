@@ -118,6 +118,16 @@ export class Boss {
           color: this.color, radius: 5
         }));
       });
+
+      // Periodically fire twin chasing missiles flanking out
+      if (Math.random() < 0.5) {
+        bullets.push(new Bullet(this.x - 30, this.y + 10, -110, 160, 20, false, {
+          color: '#ff0033', type: 'missile', homing: true, radius: 5.5, life: 3.8
+        }));
+        bullets.push(new Bullet(this.x + 30, this.y + 10, 110, 160, 20, false, {
+          color: '#ff0033', type: 'missile', homing: true, radius: 5.5, life: 3.8
+        }));
+      }
     } else {
       // Phase 2: Rotating Geometry Spiral Barrage
       this.spiralAngle += 0.45;
@@ -130,12 +140,22 @@ export class Boss {
           color: '#ffe600', radius: 4.5
         }));
       }
+
+      // Fast chasing hellfire missiles
+      if (Math.random() < 0.65) {
+        bullets.push(new Bullet(this.x - 34, this.y + 5, -130, 180, 24, false, {
+          color: '#ff0033', type: 'missile', homing: true, radius: 6, life: 4.2
+        }));
+        bullets.push(new Bullet(this.x + 34, this.y + 5, 130, 180, 24, false, {
+          color: '#ff0033', type: 'missile', homing: true, radius: 6, life: 4.2
+        }));
+      }
     }
   }
 
   performSpecial(bullets, particles) {
     audio.playBossAlert();
-    // 360-degree Nova burst
+    // 360-degree Nova burst + homing missile barrage
     const spokes = 12;
     for (let i = 0; i < spokes; i++) {
       const a = (i * Math.PI * 2) / spokes;
@@ -145,6 +165,15 @@ export class Boss {
         color: '#ff007f', radius: 5.5
       }));
     }
+
+    // 2 Chasing missiles from core
+    bullets.push(new Bullet(this.x - 20, this.y, -90, 170, 22, false, {
+      color: '#ff0055', type: 'missile', homing: true, radius: 5.5, life: 4.0
+    }));
+    bullets.push(new Bullet(this.x + 20, this.y, 90, 170, 22, false, {
+      color: '#ff0055', type: 'missile', homing: true, radius: 5.5, life: 4.0
+    }));
+
     particles.push(new Particle(this.x, this.y, 0, 0, this.color, 12, 0.5, 'ring'));
   }
 

@@ -74,19 +74,21 @@ export class WaveManager {
   }
 
   generateCampaignWave(wave) {
-    const enemyCount = 5 + wave * 2;
+    const enemyCount = 6 + wave * 2;
     const hpMult = 1.0 + (this.sectorId - 1) * 0.35 + (wave - 1) * 0.1;
 
+    // Rich pool of thematic enemy types
+    const pool = ['SCOUT', 'BUG_WASP', 'PLANE_VIPER'];
+    if (wave >= 2) pool.push('BUZZSAW', 'BUG_SCARAB', 'HALLOWEEN_PUMPKIN');
+    if (wave >= 3) pool.push('HALLOWEEN_BAT', 'DEVIL');
+    if (wave >= 5) pool.push('PLANE_BOMBER', 'HALLOWEEN_SKULL', 'SNIPER', 'RHOMBUS');
+    if (wave >= 7) pool.push('INTERCEPTOR');
+
     for (let i = 0; i < enemyCount; i++) {
-      let typeKey = 'SCOUT';
-      const r = Math.random();
-      if (wave >= 2 && r > 0.65) typeKey = 'BUZZSAW';
-      if (wave >= 4 && r > 0.75) typeKey = 'RHOMBUS';
-      if (wave >= 6 && r > 0.85) typeKey = 'SNIPER';
-      if (wave >= 7 && r > 0.9) typeKey = 'INTERCEPTOR';
+      const typeKey = pool[Math.floor(Math.random() * pool.length)];
 
       this.spawnQueue.push({
-        delay: 0.5 + i * (1.8 / Math.sqrt(wave + 1)),
+        delay: 0.4 + i * (1.7 / Math.sqrt(wave + 1)),
         x: 40 + Math.random() * (this.canvasWidth - 80),
         y: -30,
         type: typeKey,
@@ -100,16 +102,17 @@ export class WaveManager {
     const enemyCount = 7 + Math.floor(wave * 2.2);
     const hpMult = 1.0 + (wave - 1) * 0.22;
 
+    const pool = ['SCOUT', 'BUG_WASP', 'PLANE_VIPER'];
+    if (wave >= 2) pool.push('BUZZSAW', 'BUG_SCARAB', 'HALLOWEEN_PUMPKIN');
+    if (wave >= 3) pool.push('HALLOWEEN_BAT', 'DEVIL');
+    if (wave >= 5) pool.push('PLANE_BOMBER', 'HALLOWEEN_SKULL', 'SNIPER');
+    if (wave >= 7) pool.push('RHOMBUS', 'INTERCEPTOR');
+
     for (let i = 0; i < enemyCount; i++) {
-      let typeKey = 'SCOUT';
-      const r = Math.random();
-      if (wave >= 2 && r > 0.5) typeKey = 'BUZZSAW';
-      if (wave >= 4 && r > 0.65) typeKey = 'RHOMBUS';
-      if (wave >= 6 && r > 0.75) typeKey = 'SNIPER';
-      if (wave >= 8 && r > 0.85) typeKey = 'INTERCEPTOR';
+      const typeKey = pool[Math.floor(Math.random() * pool.length)];
 
       this.spawnQueue.push({
-        delay: 0.4 + i * Math.max(0.4, (2.0 - wave * 0.08)),
+        delay: 0.35 + i * Math.max(0.35, (1.8 - wave * 0.08)),
         x: 35 + Math.random() * (this.canvasWidth - 70),
         y: -30,
         type: typeKey,
