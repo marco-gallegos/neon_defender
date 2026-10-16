@@ -66,6 +66,10 @@
         <div class="hud-bottom">
           <div class="bottom-left">
             <div id="power-indicator" class="power-level">WEAPON LVL 1</div>
+            <button id="btn-primary-mode" class="primary-switch-pill" title="Switch Main Gun (X / 1 / Tap)">
+              <span id="primary-mode-icon">⚡</span>
+              <span id="primary-mode-label">PLASMA</span>
+            </button>
           </div>
           <div class="bottom-right action-buttons">
             <button id="btn-secondary" class="action-btn secondary-btn-weapon" title="Fire Secondary Weapon (Q / Right-Click / Tap)">
@@ -95,7 +99,10 @@
         <div class="menu-ship-preview">
           <canvas id="shipPreviewCanvas" width="140" height="140"></canvas>
           <div id="selected-ship-name" class="ship-name">CYBER DART</div>
-          <div id="selected-secondary-badge" class="secondary-preview-badge">🚀 SEEKER MISSILES</div>
+          <div class="preview-badges-row">
+            <div id="selected-primary-badge" class="secondary-preview-badge primary-badge-cyan">⚡ PULSE CANNON</div>
+            <div id="selected-secondary-badge" class="secondary-preview-badge">🚀 SEEKER MISSILES</div>
+          </div>
         </div>
 
         <div class="currency-bar">
@@ -155,13 +162,17 @@
           </div>
         </div>
         <div class="shop-tabs">
-          <button id="tab-shop-systems" class="shop-tab active">⚡ SHIP SYSTEMS</button>
-          <button id="tab-shop-secondaries" class="shop-tab">🚀 SECONDARY ARSENAL</button>
+          <button id="tab-shop-systems" class="shop-tab active">⚡ SYSTEMS</button>
+          <button id="tab-shop-primaries" class="shop-tab">🔫 MAIN GUNS</button>
+          <button id="tab-shop-secondaries" class="shop-tab">🚀 SECONDARY</button>
         </div>
         <div class="shop-tip" id="shop-tip-text">
           💡 Earn unlimited Shards in <b>Arena Mode</b> to max out all upgrades!
         </div>
         <div class="shop-list" id="shop-items-container">
+          <!-- Populated by JS -->
+        </div>
+        <div class="shop-list hidden" id="shop-primaries-container">
           <!-- Populated by JS -->
         </div>
         <div class="shop-list hidden" id="shop-secondaries-container">

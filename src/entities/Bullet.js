@@ -30,11 +30,20 @@ export class Bullet {
     this.trailTimer = 0;
     this.animAngle = Math.random() * Math.PI * 2;
     this.vortexTimer = 0;
+    this.wavePhase = options.wavePhase || 0;
+    this.waveAmp = options.waveAmp || 0;
+    this.waveTime = 0;
   }
 
   update(dt, targets = [], particles = null, bullets = null) {
     this.life -= dt;
     this.animAngle += dt * 8.0;
+
+    // Sinusoidal wave oscillation for wave weapons
+    if (this.type === 'wave') {
+      this.waveTime += dt;
+      this.x += Math.cos(this.waveTime * 13 + this.wavePhase) * (this.waveAmp || 150) * dt;
+    }
 
     if (this.life <= 0) {
       this.dead = true;
@@ -288,8 +297,63 @@ export class Bullet {
         ctx.beginPath();
         ctx.arc(0, 0, 5, 0, Math.PI * 2);
         ctx.fill();
+      } else if (this.type === 'laser') {
+        // Continuous Piercing Photon Beam
+        const angle = Math.atan2(this.vy, this.vx);
+        ctx.translate(this.x, this.y);
+        ctx.rotate(angle);
+
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = this.radius * 2.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-16, 0);
+        ctx.lineTo(16, 0);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1.8, this.radius * 0.8);
+        ctx.beginPath();
+        ctx.moveTo(-13, 0);
+        ctx.lineTo(13, 0);
+        ctx.stroke();
+
+      } else if (this.type === 'spread') {
+        // High-velocity Kinetic Vulcan Pellets
+        const angle = Math.atan2(this.vy, this.vx);
+        ctx.translate(this.x, this.y);
+        ctx.rotate(angle);
+
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.moveTo(9, 0);
+        ctx.lineTo(-5, -4);
+        ctx.lineTo(-2, 0);
+        ctx.lineTo(-5, 4);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-2, -1.5, 4, 3);
+
+      } else if (this.type === 'wave') {
+        // Pulsing Sinusoidal Energy Ripple
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.animAngle);
+
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius + 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
       } else {
-        // Standard elongated high-velocity laser capsule
+        // Standard elongated high-velocity laser capsule (Plasma)
         ctx.beginPath();
         ctx.ellipse(this.x, this.y, this.radius, this.radius * 2.2, 0, 0, Math.PI * 2);
         ctx.fill();

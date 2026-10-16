@@ -1,5 +1,5 @@
 // UI Screen Management, Shop Rendering, Hangar, and HUD Updates
-import { UPGRADES, SHIPS, SECTORS, SECONDARY_WEAPONS } from '../systems/UpgradeSystem.js';
+import { UPGRADES, SHIPS, SECTORS, SECONDARY_WEAPONS, PRIMARY_WEAPONS } from '../systems/UpgradeSystem.js';
 import { Renderer } from '../engine/Renderer.js';
 import { audio } from '../engine/Audio.js';
 import { Storage } from '../engine/Storage.js';
@@ -150,14 +150,18 @@ export class UIManager {
     // Workshop Tabs
     const tabSystems = document.getElementById('tab-shop-systems');
     const tabSecondaries = document.getElementById('tab-shop-secondaries');
-    if (tabSystems && tabSecondaries) {
-      tabSystems.onclick = () => {
-        audio.playClick();
-        this.switchShopTab('systems');
-      };
-      tabSecondaries.onclick = () => {
-        audio.playClick();
-        this.switchShopTab('secondaries');
+    const tabPrimaries = document.getElementById('tab-shop-primaries');
+    if (tabSystems) tabSystems.onclick = () => { audio.playClick(); this.switchShopTab('systems'); };
+    if (tabSecondaries) tabSecondaries.onclick = () => { audio.playClick(); this.switchShopTab('secondaries'); };
+    if (tabPrimaries) tabPrimaries.onclick = () => { audio.playClick(); this.switchShopTab('primaries'); };
+
+    // Primary mode switch pill (HUD)
+    const primBtn = document.getElementById('btn-primary-mode');
+    if (primBtn) {
+      primBtn.onclick = () => {
+        if (this.game.player && typeof this.game.player.cyclePrimaryWeapon === 'function') {
+          this.game.player.cyclePrimaryWeapon();
+        }
       };
     }
 
@@ -268,12 +272,26 @@ export class UIManager {
     if (nameEl) nameEl.textContent = currentShip.name;
     Renderer.drawShipPreview(previewCanvas, currentShip);
 
+    // Show equipped primary weapon badge
+    const primId = this.game.saveData.equippedPrimary || 'plasma';
+    const primDef = PRIMARY_WEAPONS[primId];
+    const primaryBadge = document.getElementById('selected-primary-badge');
+    if (primaryBadge && primDef) {
+      primaryBadge.textContent = `${primDef.icon} ${primDef.name}`;
+    }
+
     // Show equipped secondary weapon badge
     const secId = this.game.saveData.equippedSecondary || 'seeker';
     const secDef = SECONDARY_WEAPONS[secId];
     if (this.selectedSecondaryBadge && secDef) {
       this.selectedSecondaryBadge.textContent = `${secDef.icon} ${secDef.name}`;
     }
+
+    // Update HUD primary pill if player is active
+    const primIcon = document.getElementById('primary-mode-icon');
+    const primLabel = document.getElementById('primary-mode-label');
+    if (primIcon && primDef) primIcon.textContent = primDef.icon;
+    if (primLabel && primDef) primLabel.textContent = primDef.shortName;
   }
 
   // Render Campaign Sectors
@@ -376,46 +394,11 @@ export class UIManager {
     });
   }
 
-  switchShopTab(tab) {
-    this.currentShopTab = tab;
-    const systemsContainer = document.getElementById('shop-items-container');
-    const secondariesContainer = document.getElementById('shop-secondaries-container');
-    const tabSystems = document.getElementById('tab-shop-systems');
-    const tabSecondaries = document.getElementById('tab-shop-secondaries');
-    const tipEl = document.getElementById('shop-tip-text');
-
-    if (tab === 'systems') {
-      if (systemsContainer) {
-        systemsContainer.classList.remove('hidden');
-        systemsContainer.style.setProperty('display', 'flex', 'important');
-      }
-      if (secondariesContainer) {
-        secondariesContainer.classList.add('hidden');
-        secondariesContainer.style.setProperty('display', 'none', 'important');
-      }
-      tabSystems?.classList.add('active');
-      tabSecondaries?.classList.remove('active');
-      if (tipEl) tipEl.innerHTML = '💡 Earn unlimited Shards in <b>Arena Mode</b> to max out all upgrades!';
-      this.renderShop();
-    } else {
-      if (systemsContainer) {
-        systemsContainer.classList.add('hidden');
-        systemsContainer.style.setProperty('display', 'none', 'important');
-      }
-      if (secondariesContainer) {
-        secondariesContainer.classList.remove('hidden');
-        secondariesContainer.style.setProperty('display', 'flex', 'important');
-      }
-      tabSystems?.classList.remove('active');
-      tabSecondaries?.classList.add('active');
-      if (tipEl) tipEl.innerHTML = '🚀 Unlock & equip your Secondary Weapon arsenal — tap to equip!';
-      this.renderSecondaryArsenal();
-    }
-  }
-
+  // Render Secondary Arsenal (unlock / equip / upgrade)
   renderSecondaryArsenal() {
     this.refreshCurrencyDisplays();
     const container = document.getElementById('shop-secondaries-container');
+    if (!container) return;
     container.innerHTML = '';
 
     const saveData = this.game.saveData;
@@ -434,32 +417,21 @@ export class UIManager {
       const card = document.createElement('div');
       card.className = `secondary-card ${isEquipped ? 'equipped' : ''}`;
 
-      // Stats preview
       const stats = sec.getStats(currentLvl);
       let statsHtml = '';
-      if (sec.id === 'seeker') {
-        statsHtml = `<span>DMG: ${stats.damage}</span><span>COUNT: ${stats.count}</span><span>CD: ${stats.cooldown.toFixed(1)}s</span>`;
-      } else if (sec.id === 'railgun') {
-        statsHtml = `<span>DMG: ${stats.damage}</span><span>WIDTH: ${stats.beamWidth}px</span><span>CD: ${stats.cooldown.toFixed(1)}s</span>`;
-      } else if (sec.id === 'cluster') {
-        statsHtml = `<span>SHELL: ${stats.shellDamage}</span><span>SHARDS: ${stats.shrapnelCount}</span><span>CD: ${stats.cooldown.toFixed(1)}s</span>`;
-      } else if (sec.id === 'vortex') {
-        statsHtml = `<span>DMG: ${stats.damage}</span><span>RADIUS: ${stats.radius}px</span><span>CD: ${stats.cooldown.toFixed(1)}s</span>`;
-      }
+      if (sec.id === 'seeker')  statsHtml = `<span>DMG: ${stats.damage}</span><span>COUNT: ${stats.count}</span><span>CD: ${stats.cooldown.toFixed(1)}s</span>`;
+      else if (sec.id === 'railgun') statsHtml = `<span>DMG: ${stats.damage}</span><span>WIDTH: ${stats.beamWidth}px</span><span>CD: ${stats.cooldown.toFixed(1)}s</span>`;
+      else if (sec.id === 'cluster') statsHtml = `<span>SHELL: ${stats.shellDamage}</span><span>SHARDS: ${stats.shrapnelCount}</span><span>CD: ${stats.cooldown.toFixed(1)}s</span>`;
+      else if (sec.id === 'vortex') statsHtml = `<span>DMG: ${stats.damage}</span><span>RADIUS: ${stats.radius}px</span><span>CD: ${stats.cooldown.toFixed(1)}s</span>`;
 
-      // Level pips
       let pipsHtml = '';
       for (let i = 1; i <= sec.maxLevel; i++) {
         pipsHtml += `<div class="level-pip ${i <= currentLvl ? 'filled' : ''}"></div>`;
       }
 
-      // Actions area
       let actionsHtml = '';
       if (!isUnlocked) {
-        actionsHtml = `
-          <button class="neon-btn shop-buy-btn ${canAffordUnlock ? 'primary-btn' : 'secondary-btn'}" id="unlock-sec-${sec.id}">
-            🔓 ${sec.cost} ◆
-          </button>`;
+        actionsHtml = `<button class="neon-btn shop-buy-btn ${canAffordUnlock ? 'primary-btn' : 'secondary-btn'}" id="unlock-sec-${sec.id}">🔓 ${sec.cost} ◆</button>`;
       } else {
         if (isEquipped) {
           actionsHtml = `<span style="color:var(--neon-lime);font-family:var(--font-display);font-size:0.8rem;">✓ EQUIPPED</span>`;
@@ -467,10 +439,7 @@ export class UIManager {
           actionsHtml += `<button class="neon-btn mini-btn" id="equip-sec-${sec.id}" style="border-color:var(--neon-lime);color:var(--neon-lime);">EQUIP</button>`;
         }
         if (!isMax) {
-          actionsHtml += `
-            <button class="neon-btn shop-buy-btn ${canAffordUpgrade ? 'primary-btn' : 'secondary-btn'}" id="upgrade-sec-${sec.id}">
-              ↑ ${upgradeCost} ◆
-            </button>`;
+          actionsHtml += `<button class="neon-btn shop-buy-btn ${canAffordUpgrade ? 'primary-btn' : 'secondary-btn'}" id="upgrade-sec-${sec.id}">↑ ${upgradeCost} ◆</button>`;
         } else {
           actionsHtml += `<button class="neon-btn shop-buy-btn maxed" disabled>MAXED</button>`;
         }
@@ -492,53 +461,101 @@ export class UIManager {
         <div class="secondary-card-actions">${actionsHtml}</div>
       `;
 
-      // Wire up unlock button
       if (!isUnlocked) {
         const unlockBtn = card.querySelector(`#unlock-sec-${sec.id}`);
-        if (unlockBtn) {
-          unlockBtn.onclick = () => {
-            if (saveData.shards >= sec.cost) {
-              audio.playPowerup();
-              saveData.shards -= sec.cost;
-              if (!saveData.unlockedSecondaries.includes(sec.id)) {
-                saveData.unlockedSecondaries.push(sec.id);
-              }
-              Storage.save(saveData);
-              this.renderSecondaryArsenal();
-              this.renderMenuPreview();
-            } else {
-              audio.playShieldHit();
-              alert('Not enough Shards!');
-            }
-          };
-        }
-      } else {
-        // Equip button
-        const equipBtn = card.querySelector(`#equip-sec-${sec.id}`);
-        if (equipBtn) {
-          equipBtn.onclick = () => {
-            audio.playClick();
-            saveData.equippedSecondary = sec.id;
+        if (unlockBtn) unlockBtn.onclick = () => {
+          if (saveData.shards >= sec.cost) {
+            audio.playPowerup();
+            saveData.shards -= sec.cost;
+            if (!saveData.unlockedSecondaries.includes(sec.id)) saveData.unlockedSecondaries.push(sec.id);
             Storage.save(saveData);
             this.renderSecondaryArsenal();
             this.renderMenuPreview();
-          };
-        }
-        // Upgrade button
+          } else {
+            audio.playShieldHit();
+            alert('Not enough Shards!');
+          }
+        };
+      } else {
+        const equipBtn = card.querySelector(`#equip-sec-${sec.id}`);
+        if (equipBtn) equipBtn.onclick = () => {
+          audio.playClick();
+          saveData.equippedSecondary = sec.id;
+          Storage.save(saveData);
+          this.renderSecondaryArsenal();
+          this.renderMenuPreview();
+        };
         const upgradeBtn = card.querySelector(`#upgrade-sec-${sec.id}`);
-        if (upgradeBtn && !isMax) {
-          upgradeBtn.onclick = () => {
-            if (saveData.shards >= upgradeCost) {
-              audio.playPowerup();
-              saveData.shards -= upgradeCost;
-              saveData.secondaryUpgrades[sec.id] = currentLvl + 1;
-              Storage.save(saveData);
-              this.renderSecondaryArsenal();
-              this.refreshCurrencyDisplays();
-            } else {
-              audio.playShieldHit();
-              alert('Not enough Shards! Play Endless Arena to harvest more!');
-            }
+        if (upgradeBtn && !isMax) upgradeBtn.onclick = () => {
+          if (saveData.shards >= upgradeCost) {
+            audio.playPowerup();
+            saveData.shards -= upgradeCost;
+            saveData.secondaryUpgrades[sec.id] = currentLvl + 1;
+            Storage.save(saveData);
+            this.renderSecondaryArsenal();
+            this.refreshCurrencyDisplays();
+          } else {
+            audio.playShieldHit();
+            alert('Not enough Shards! Play Endless Arena to harvest more!');
+          }
+        };
+      }
+
+      container.appendChild(card);
+    });
+  }
+
+
+  // Render Primary Weapons Shop (switch main gun)
+  renderPrimaryShop() {
+    this.refreshCurrencyDisplays();
+    const container = document.getElementById('shop-primaries-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const saveData = this.game.saveData;
+    const equippedId = saveData.equippedPrimary || 'plasma';
+    const unlockedList = saveData.unlockedPrimaries || ['plasma'];
+
+    Object.values(PRIMARY_WEAPONS).forEach(prim => {
+      const isUnlocked = unlockedList.includes(prim.id);
+      const isEquipped = equippedId === prim.id;
+      const card = document.createElement('div');
+      card.className = `primary-card ${isEquipped ? 'equipped' : ''}`;
+
+      let actionsHtml = '';
+      if (isUnlocked) {
+        if (isEquipped) {
+          actionsHtml = `<span style="color:var(--neon-lime);font-size:0.8rem;">✓ EQUIPPED</span>`;
+        } else {
+          actionsHtml = `<button class="neon-btn mini-btn" id="equip-prim-${prim.id}" style="border-color:var(--neon-lime);color:var(--neon-lime);">EQUIP</button>`;
+        }
+      } else {
+        // Placeholder for future unlock cost handling
+        actionsHtml = `<button class="neon-btn shop-buy-btn secondary-btn" disabled>LOCKED</button>`;
+      }
+
+      card.innerHTML = `
+        <div class="primary-card-header">
+          <span class="primary-card-icon">${prim.icon}</span>
+          <div>
+            <div>${prim.name}</div>
+            <div style="font-size:0.75rem;color:var(--neon-cyan);">${prim.shortName}</div>
+          </div>
+        </div>
+        <div class="primary-card-desc">${prim.desc}</div>
+        <div class="primary-card-actions">${actionsHtml}</div>
+      `;
+
+      if (isUnlocked && !isEquipped) {
+        const equipBtn = card.querySelector(`#equip-prim-${prim.id}`);
+        if (equipBtn) {
+          equipBtn.onclick = () => {
+            audio.playClick();
+            saveData.equippedPrimary = prim.id;
+            Storage.save(saveData);
+            this.renderPrimaryShop();
+            this.renderMenuPreview();
           };
         }
       }
@@ -546,6 +563,64 @@ export class UIManager {
       container.appendChild(card);
     });
   }
+
+// Extend switchShopTab to handle primaries
+  switchShopTab(tab) {
+    this.currentShopTab = tab;
+    const systemsContainer = document.getElementById('shop-items-container');
+    const secondariesContainer = document.getElementById('shop-secondaries-container');
+    const primariesContainer = document.getElementById('shop-primaries-container');
+    const tabSystems = document.getElementById('tab-shop-systems');
+    const tabSecondaries = document.getElementById('tab-shop-secondaries');
+    const tabPrimaries = document.getElementById('tab-shop-primaries');
+    const tipEl = document.getElementById('shop-tip-text');
+
+    // Hide all containers first
+    if (systemsContainer) {
+      systemsContainer.classList.add('hidden');
+      systemsContainer.style.display = 'none';
+    }
+    if (secondariesContainer) {
+      secondariesContainer.classList.add('hidden');
+      secondariesContainer.style.display = 'none';
+    }
+    if (primariesContainer) {
+      primariesContainer.classList.add('hidden');
+      primariesContainer.style.display = 'none';
+    }
+
+    // Reset active states
+    tabSystems?.classList.remove('active');
+    tabSecondaries?.classList.remove('active');
+    tabPrimaries?.classList.remove('active');
+
+    if (tab === 'systems') {
+      if (systemsContainer) {
+        systemsContainer.classList.remove('hidden');
+        systemsContainer.style.display = 'flex';
+      }
+      if (tipEl) tipEl.innerHTML = '💡 Earn unlimited Shards in <b>Arena Mode</b> to max out all upgrades!';
+      this.renderShop();
+    } else if (tab === 'secondaries') {
+      if (secondariesContainer) {
+        secondariesContainer.classList.remove('hidden');
+        secondariesContainer.style.display = 'flex';
+      }
+      if (tipEl) tipEl.innerHTML = '🚀 Unlock & equip your Secondary Weapon arsenal — tap to equip!';
+      this.renderSecondaryArsenal();
+    } else if (tab === 'primaries') {
+      if (primariesContainer) {
+        primariesContainer.classList.remove('hidden');
+        primariesContainer.style.display = 'flex';
+      }
+      if (tipEl) tipEl.innerHTML = '🔫 Choose your Main Gun — tap to equip!';
+      this.renderPrimaryShop();
+    }
+    if (tabSystems) tabSystems?.classList.toggle('active', tab === 'systems');
+    if (tabSecondaries) tabSecondaries?.classList.toggle('active', tab === 'secondaries');
+    if (tabPrimaries) tabPrimaries?.classList.toggle('active', tab === 'primaries');
+  }
+
 
   // Render Ship Hangar
   renderHangar() {
@@ -664,6 +739,14 @@ export class UIManager {
 
     // Weapon level indicator
     this.hudPower.textContent = `WEAPON LVL ${player.weaponLevel}${player.overdriveTimer > 0 ? ' [HYPER]' : ''}`;
+
+    // Primary weapon HUD pill
+    if (player.primaryDef) {
+      const primIcon = document.getElementById('primary-mode-icon');
+      const primLabel = document.getElementById('primary-mode-label');
+      if (primIcon) primIcon.textContent = player.primaryDef.icon;
+      if (primLabel) primLabel.textContent = player.primaryDef.shortName;
+    }
 
     // EMP Cooldown
     const cdRatio = Math.max(0, player.empCooldown / player.empMaxCooldown);

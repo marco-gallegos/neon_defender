@@ -546,6 +546,14 @@ h1, h2, h3 {
   border: 1px solid var(--neon-lime);
 }
 
+.bottom-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  pointer-events: auto;
+}
+
 .action-buttons {
   display: flex;
   gap: 12px;
@@ -818,18 +826,101 @@ h1, h2, h3 {
   margin-top: 4px;
 }
 
+.preview-badges-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 6px;
+}
+
 .secondary-preview-badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--neon-lime);
   background: rgba(57, 255, 20, 0.12);
   border: 1px solid var(--neon-lime);
   padding: 3px 10px;
   border-radius: 12px;
-  margin-top: 6px;
   box-shadow: 0 0 8px rgba(57, 255, 20, 0.25);
   font-family: var(--font-display);
   letter-spacing: 0.5px;
 }
+
+.primary-badge-cyan {
+  color: var(--neon-cyan) !important;
+  background: rgba(0, 240, 255, 0.12) !important;
+  border-color: var(--neon-cyan) !important;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.25) !important;
+}
+
+.primary-switch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(14, 18, 42, 0.9);
+  border: 1.5px solid var(--neon-cyan);
+  border-radius: 14px;
+  padding: 5px 12px;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+  transition: transform 0.1s ease, border-color 0.2s, box-shadow 0.2s;
+  user-select: none;
+  margin-top: 5px;
+}
+
+.primary-switch-pill:active {
+  transform: scale(0.92);
+  border-color: var(--neon-yellow);
+}
+
+/* Primary Weapon Cards (Main Gun Shop) */
+.primary-card {
+  background: var(--dark-panel);
+  border: 1.5px solid rgba(0, 240, 255, 0.25);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.primary-card.equipped {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
+}
+
+.primary-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: #fff;
+}
+
+.primary-card-icon {
+  font-size: 1.7rem;
+}
+
+.primary-card-desc {
+  font-size: 0.8rem;
+  color: #9aa5c4;
+  line-height: 1.35;
+}
+
+.primary-card-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
 
 .shop-item {
   background: var(--dark-panel);

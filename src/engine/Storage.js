@@ -5,6 +5,8 @@ const DEFAULT_DATA = {
   shards: 800, // Starter bonus for immediate fun testing of new ships & weapons
   equippedShip: 'dracula_plane',
   unlockedShips: ['alpha_dart', 'dracula_plane', 'bati_plane', 'halloween_reaper'],
+  equippedPrimary: 'plasma',
+  unlockedPrimaries: ['plasma', 'laser', 'spread', 'wave'],
   equippedSecondary: 'seeker',
   unlockedSecondaries: ['seeker', 'railgun', 'cluster'],
   secondaryUpgrades: {
@@ -115,12 +117,22 @@ export class Storage {
         ? parsed.equippedShip
         : 'dracula_plane';
 
+      const safeUnlockedPrimaries = Array.isArray(parsed?.unlockedPrimaries) && parsed.unlockedPrimaries.length > 0
+        ? [...new Set([...parsed.unlockedPrimaries, ...DEFAULT_DATA.unlockedPrimaries])]
+        : [...DEFAULT_DATA.unlockedPrimaries];
+
+      const safeEquippedPrimary = typeof parsed?.equippedPrimary === 'string' && safeUnlockedPrimaries.includes(parsed.equippedPrimary)
+        ? parsed.equippedPrimary
+        : 'plasma';
+
       return {
         ...DEFAULT_DATA,
         ...parsed,
         shards: safeShards,
         equippedShip: safeEquippedShip,
         unlockedShips: safeUnlockedShips,
+        equippedPrimary: safeEquippedPrimary,
+        unlockedPrimaries: safeUnlockedPrimaries,
         upgrades: safeUpgrades,
         equippedSecondary: safeEquippedSecondary,
         unlockedSecondaries: safeUnlockedSecondaries,

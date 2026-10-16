@@ -241,9 +241,64 @@ export const SECTORS = [
     rewardShards: 1500,
     bossName: 'CHRONOS PRIME',
     bossHp: 6800,
-    color: '#39ff14'
   }
 ];
+
+export const PRIMARY_WEAPONS = {
+  plasma: {
+    id: 'plasma',
+    name: 'PULSE CANNON',
+    shortName: 'PLASMA',
+    icon: '⚡',
+    desc: 'High-velocity concentrated plasma stream. Balanced fire cadence and pin-point accuracy.',
+    cost: 0,
+    color: '#00f0ff',
+    secondaryColor: '#ffffff',
+    fireIntervalMult: 1.0,
+    damageMult: 1.0,
+    type: 'plasma'
+  },
+  laser: {
+    id: 'laser',
+    name: 'PHOTON LANCE',
+    shortName: 'LASER',
+    icon: '🔴',
+    desc: 'Hyper-dense piercing laser beams that cut through multiple enemies simultaneously.',
+    cost: 0,
+    color: '#ff0055',
+    secondaryColor: '#ff99bb',
+    fireIntervalMult: 1.18,
+    damageMult: 1.35,
+    type: 'laser',
+    pierce: 3
+  },
+  spread: {
+    id: 'spread',
+    name: 'SPREAD VULCAN',
+    shortName: 'SPREAD',
+    icon: '💥',
+    desc: 'Wide multi-barrel shotgun spread providing massive screen coverage against swarms.',
+    cost: 0,
+    color: '#ffe600',
+    secondaryColor: '#ff7700',
+    fireIntervalMult: 1.12,
+    damageMult: 0.85,
+    type: 'spread'
+  },
+  wave: {
+    id: 'wave',
+    name: 'WAVE PULSAR',
+    shortName: 'WAVE',
+    icon: '🌊',
+    desc: 'Sine-wave oscillating dual energy streams that sweep back and forth across lanes.',
+    cost: 0,
+    color: '#39ff14',
+    secondaryColor: '#00f0ff',
+    fireIntervalMult: 0.95,
+    damageMult: 1.1,
+    type: 'wave'
+  }
+};
 
 export const SECONDARY_WEAPONS = {
   seeker: {

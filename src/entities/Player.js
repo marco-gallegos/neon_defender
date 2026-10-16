@@ -1,7 +1,7 @@
 // Player Ship Entity with Wingman Drones, Shields, and Modular Weapons
 import { Bullet } from './Bullet.js';
 import { Particle, FloatingText } from './Particle.js';
-import { SHIPS, UPGRADES, SECONDARY_WEAPONS } from '../systems/UpgradeSystem.js';
+import { SHIPS, UPGRADES, PRIMARY_WEAPONS, SECONDARY_WEAPONS } from '../systems/UpgradeSystem.js';
 import { audio } from '../engine/Audio.js';
 import { Renderer } from '../engine/Renderer.js';
 
@@ -13,6 +13,11 @@ export class Player {
 
     this.shipDef = SHIPS[saveState.equippedShip] || SHIPS.alpha_dart;
     this.upgrades = saveState.upgrades;
+
+    // Primary Weapon Setup (Switchable Main Gun)
+    this.primaryId = saveState.equippedPrimary || 'plasma';
+    this.unlockedPrimaries = saveState.unlockedPrimaries || ['plasma', 'laser', 'spread', 'wave'];
+    this.refreshPrimaryStats();
 
     // Secondary Weapon Setup
     this.secondaryId = saveState.equippedSecondary || 'seeker';
@@ -137,9 +142,10 @@ export class Player {
     }
 
     // Primary Weapon automatic continuous firing
+    const baseInterval = this.baseFireInterval * (this.primaryDef?.fireIntervalMult || 1.0);
     const currentFireInterval = this.overdriveTimer > 0 
-      ? this.baseFireInterval * 0.5 
-      : this.baseFireInterval;
+      ? baseInterval * 0.5 
+      : baseInterval;
 
     this.shootTimer += dt;
     if (this.shootTimer >= currentFireInterval) {
@@ -155,6 +161,11 @@ export class Player {
         this.droneShootTimer = 0;
         this.fireDrones(bullets, enemies);
       }
+    }
+
+    // Main Gun switch trigger (X / 1 / Mobile button)
+    if (input.consumeCyclePrimary && input.consumeCyclePrimary()) {
+      this.cyclePrimaryWeapon(floatingTexts);
     }
 
     // Secondary Weapon timer & automatic firing on cooldown
@@ -175,6 +186,23 @@ export class Player {
     // EMP Bomb trigger
     if (input.consumeEmp()) {
       this.triggerEmp(bullets, particles, floatingTexts, enemies);
+    }
+  }
+
+  refreshPrimaryStats() {
+    this.primaryDef = PRIMARY_WEAPONS[this.primaryId] || PRIMARY_WEAPONS.plasma;
+  }
+
+  cyclePrimaryWeapon(floatingTexts) {
+    if (!this.unlockedPrimaries || this.unlockedPrimaries.length <= 1) return;
+    const currentIdx = this.unlockedPrimaries.indexOf(this.primaryId);
+    const nextIdx = (currentIdx + 1) % this.unlockedPrimaries.length;
+    this.primaryId = this.unlockedPrimaries[nextIdx];
+    this.saveState.equippedPrimary = this.primaryId;
+    this.refreshPrimaryStats();
+    audio.playPowerup();
+    if (floatingTexts) {
+      floatingTexts.push(new FloatingText(this.x, this.y - 25, `GUN: ${this.primaryDef.name}`, this.primaryDef.color, true));
     }
   }
 
@@ -306,56 +334,117 @@ export class Player {
     audio.playShoot(true);
 
     const isCrit = Math.random() < this.critData.chance;
-    const dmg = this.baseDamage * (isCrit ? this.critData.mult : 1.0) * (this.overdriveTimer > 0 ? 1.5 : 1.0);
-    const bulletColor = this.overdriveTimer > 0 ? '#ff007f' : (isCrit ? '#ffe600' : this.shipDef.color);
+    const baseMult = (this.primaryDef.damageMult || 1.0) * (isCrit ? this.critData.mult : 1.0) * (this.overdriveTimer > 0 ? 1.5 : 1.0);
+    const dmg = this.baseDamage * baseMult;
+    const bulletColor = this.overdriveTimer > 0 ? '#ff007f' : (isCrit ? '#ffe600' : this.primaryDef.color);
+    const gunType = this.primaryDef.type || 'plasma';
 
-    // Multi-stream weapon patterns based on in-run weaponLevel
-    const bulletSpeed = -620;
+    if (gunType === 'laser') {
+      // PHOTON LANCE: Continuous Piercing Beams cutting down enemy columns
+      const pierce = (this.primaryDef.pierce || 3) + Math.floor(this.weaponLevel / 2);
+      const bSpeed = -720;
+      const opts = { isCrit, color: bulletColor, radius: 5, type: 'laser', pierce };
 
-    if (this.weaponLevel === 1) {
-      // Single central beam
-      bullets.push(new Bullet(this.x, this.y - 15, 0, bulletSpeed, dmg, true, {
-        isCrit, color: bulletColor, radius: 5
-      }));
-    } else if (this.weaponLevel === 2) {
-      // Dual parallel cannons
-      bullets.push(new Bullet(this.x - 9, this.y - 12, 0, bulletSpeed, dmg, true, {
-        isCrit, color: bulletColor, radius: 4.5
-      }));
-      bullets.push(new Bullet(this.x + 9, this.y - 12, 0, bulletSpeed, dmg, true, {
-        isCrit, color: bulletColor, radius: 4.5
-      }));
-    } else if (this.weaponLevel === 3) {
-      // Triple angled fan
-      bullets.push(new Bullet(this.x, this.y - 15, 0, bulletSpeed, dmg, true, {
-        isCrit, color: bulletColor, radius: 5
-      }));
-      bullets.push(new Bullet(this.x - 10, this.y - 10, -80, bulletSpeed * 0.98, dmg * 0.9, true, {
-        isCrit, color: bulletColor, radius: 4.5
-      }));
-      bullets.push(new Bullet(this.x + 10, this.y - 10, 80, bulletSpeed * 0.98, dmg * 0.9, true, {
-        isCrit, color: bulletColor, radius: 4.5
-      }));
-    } else if (this.weaponLevel === 4) {
-      // 5-Way spread barrage
-      const angles = [-0.22, -0.1, 0, 0.1, 0.22];
-      angles.forEach((rad) => {
-        const vx = Math.sin(rad) * 600;
-        const vy = -Math.cos(rad) * 600;
-        bullets.push(new Bullet(this.x, this.y - 14, vx, vy, dmg * 0.85, true, {
-          isCrit, color: bulletColor, radius: 4.5
-        }));
+      if (this.weaponLevel === 1) {
+        bullets.push(new Bullet(this.x, this.y - 16, 0, bSpeed, dmg * 1.1, true, opts));
+      } else if (this.weaponLevel === 2) {
+        bullets.push(new Bullet(this.x - 8, this.y - 14, 0, bSpeed, dmg, true, opts));
+        bullets.push(new Bullet(this.x + 8, this.y - 14, 0, bSpeed, dmg, true, opts));
+      } else if (this.weaponLevel === 3) {
+        bullets.push(new Bullet(this.x, this.y - 16, 0, bSpeed, dmg * 1.1, true, opts));
+        bullets.push(new Bullet(this.x - 12, this.y - 12, -30, bSpeed, dmg * 0.95, true, opts));
+        bullets.push(new Bullet(this.x + 12, this.y - 12, 30, bSpeed, dmg * 0.95, true, opts));
+      } else if (this.weaponLevel === 4) {
+        bullets.push(new Bullet(this.x - 14, this.y - 12, 0, bSpeed, dmg * 0.95, true, opts));
+        bullets.push(new Bullet(this.x - 5, this.y - 15, 0, bSpeed, dmg, true, opts));
+        bullets.push(new Bullet(this.x + 5, this.y - 15, 0, bSpeed, dmg, true, opts));
+        bullets.push(new Bullet(this.x + 14, this.y - 12, 0, bSpeed, dmg * 0.95, true, opts));
+      } else {
+        // Lv 5: 5 Heavy Piercing Beams Cutting Down Lanes
+        bullets.push(new Bullet(this.x, this.y - 18, 0, bSpeed, dmg * 1.2, true, opts));
+        bullets.push(new Bullet(this.x - 9, this.y - 14, 0, bSpeed, dmg, true, opts));
+        bullets.push(new Bullet(this.x + 9, this.y - 14, 0, bSpeed, dmg, true, opts));
+        bullets.push(new Bullet(this.x - 18, this.y - 10, -40, bSpeed, dmg * 0.9, true, opts));
+        bullets.push(new Bullet(this.x + 18, this.y - 10, 40, bSpeed, dmg * 0.9, true, opts));
+      }
+
+    } else if (gunType === 'spread') {
+      // SPREAD VULCAN: Wide Screen-Clearing Shotgun Fan
+      const opts = { isCrit, color: bulletColor, radius: 4.5, type: 'spread' };
+      const speed = 600;
+
+      let angles = [];
+      if (this.weaponLevel === 1) angles = [-0.18, 0, 0.18];
+      else if (this.weaponLevel === 2) angles = [-0.28, -0.14, 0, 0.14, 0.28];
+      else if (this.weaponLevel === 3) angles = [-0.38, -0.25, -0.12, 0, 0.12, 0.25, 0.38];
+      else if (this.weaponLevel === 4) angles = [-0.48, -0.36, -0.24, -0.12, 0, 0.12, 0.24, 0.36, 0.48];
+      else angles = [-0.58, -0.46, -0.35, -0.23, -0.11, 0, 0.11, 0.23, 0.35, 0.46, 0.58];
+
+      const spreadDmg = dmg * (0.85 / Math.sqrt(angles.length * 0.3));
+      angles.forEach(rad => {
+        const vx = Math.sin(rad) * speed;
+        const vy = -Math.cos(rad) * speed;
+        bullets.push(new Bullet(this.x, this.y - 14, vx, vy, spreadDmg, true, opts));
       });
+
+    } else if (gunType === 'wave') {
+      // WAVE PULSAR: Sine-Wave Oscillating Energy Ripples
+      const bSpeed = -580;
+      const optsL = { isCrit, color: bulletColor, radius: 5, type: 'wave', wavePhase: 0, waveAmp: 160 };
+      const optsR = { isCrit, color: bulletColor, radius: 5, type: 'wave', wavePhase: Math.PI, waveAmp: 160 };
+
+      // Left and right oscillating pair
+      bullets.push(new Bullet(this.x - 6, this.y - 14, 0, bSpeed, dmg, true, optsL));
+      bullets.push(new Bullet(this.x + 6, this.y - 14, 0, bSpeed, dmg, true, optsR));
+
+      if (this.weaponLevel >= 2) {
+        // Center piercing core
+        bullets.push(new Bullet(this.x, this.y - 16, 0, bSpeed * 1.05, dmg * 0.9, true, {
+          isCrit, color: '#ffffff', radius: 4.5, type: 'plasma'
+        }));
+      }
+      if (this.weaponLevel >= 3) {
+        // Wide outer wave ripples
+        const optsWL = { isCrit, color: bulletColor, radius: 4.5, type: 'wave', wavePhase: Math.PI * 0.5, waveAmp: 220 };
+        const optsWR = { isCrit, color: bulletColor, radius: 4.5, type: 'wave', wavePhase: Math.PI * 1.5, waveAmp: 220 };
+        bullets.push(new Bullet(this.x - 14, this.y - 10, 0, bSpeed * 0.96, dmg * 0.85, true, optsWL));
+        bullets.push(new Bullet(this.x + 14, this.y - 10, 0, bSpeed * 0.96, dmg * 0.85, true, optsWR));
+      }
+      if (this.weaponLevel >= 5) {
+        // Additional forward wave pulses
+        bullets.push(new Bullet(this.x - 8, this.y - 18, 0, bSpeed * 1.1, dmg * 0.8, true, optsL));
+        bullets.push(new Bullet(this.x + 8, this.y - 18, 0, bSpeed * 1.1, dmg * 0.8, true, optsR));
+      }
+
     } else {
-      // 7-Way Hyper stream (Max Level)
-      const angles = [-0.3, -0.18, -0.08, 0, 0.08, 0.18, 0.3];
-      angles.forEach((rad) => {
-        const vx = Math.sin(rad) * 640;
-        const vy = -Math.cos(rad) * 640;
-        bullets.push(new Bullet(this.x, this.y - 14, vx, vy, dmg * 0.8, true, {
-          isCrit, color: bulletColor, radius: 5
-        }));
-      });
+      // PULSE CANNON (Classic High Cadence Plasma)
+      const bulletSpeed = -620;
+      const opts = { isCrit, color: bulletColor, radius: 5, type: 'plasma' };
+
+      if (this.weaponLevel === 1) {
+        bullets.push(new Bullet(this.x, this.y - 15, 0, bulletSpeed, dmg, true, opts));
+      } else if (this.weaponLevel === 2) {
+        bullets.push(new Bullet(this.x - 9, this.y - 12, 0, bulletSpeed, dmg, true, { ...opts, radius: 4.5 }));
+        bullets.push(new Bullet(this.x + 9, this.y - 12, 0, bulletSpeed, dmg, true, { ...opts, radius: 4.5 }));
+      } else if (this.weaponLevel === 3) {
+        bullets.push(new Bullet(this.x, this.y - 15, 0, bulletSpeed, dmg, true, opts));
+        bullets.push(new Bullet(this.x - 10, this.y - 10, -70, bulletSpeed * 0.98, dmg * 0.9, true, { ...opts, radius: 4.5 }));
+        bullets.push(new Bullet(this.x + 10, this.y - 10, 70, bulletSpeed * 0.98, dmg * 0.9, true, { ...opts, radius: 4.5 }));
+      } else if (this.weaponLevel === 4) {
+        const angles = [-0.22, -0.1, 0, 0.1, 0.22];
+        angles.forEach((rad) => {
+          const vx = Math.sin(rad) * 600;
+          const vy = -Math.cos(rad) * 600;
+          bullets.push(new Bullet(this.x, this.y - 14, vx, vy, dmg * 0.85, true, { ...opts, radius: 4.5 }));
+        });
+      } else {
+        const angles = [-0.3, -0.18, -0.08, 0, 0.08, 0.18, 0.3];
+        angles.forEach((rad) => {
+          const vx = Math.sin(rad) * 640;
+          const vy = -Math.cos(rad) * 640;
+          bullets.push(new Bullet(this.x, this.y - 14, vx, vy, dmg * 0.8, true, opts));
+        });
+      }
     }
   }
 

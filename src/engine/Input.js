@@ -9,6 +9,7 @@ export class InputManager {
     this.empTriggered = false;
     this.secondaryTriggered = false;
     this.cycleSecondaryTriggered = false;
+    this.cyclePrimaryTriggered = false;
 
     // Relative drag tracking for mobile
     this.touchStartX = 0;
@@ -46,6 +47,9 @@ export class InputManager {
       }
       if (e.code === 'KeyC' || e.code === 'Digit2') {
         this.cycleSecondaryTriggered = true;
+      }
+      if (e.code === 'KeyX' || e.code === 'Digit1') {
+        this.cyclePrimaryTriggered = true;
       }
     });
 
@@ -161,6 +165,12 @@ export class InputManager {
   consumeCycleSecondary() {
     const triggered = this.cycleSecondaryTriggered;
     this.cycleSecondaryTriggered = false;
+    return triggered;
+  }
+
+  consumeCyclePrimary() {
+    const triggered = this.cyclePrimaryTriggered;
+    this.cyclePrimaryTriggered = false;
     return triggered;
   }
 }
