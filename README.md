@@ -76,3 +76,37 @@ A high-octane, neon vector shoot 'em up game optimized for **cellphones (touch c
 - **Left Click / Space**: Fire weapons (Auto-fire is enabled by default during touch/drag)
 - **E / B / Screen Button**: Detonate EMP Super Bomb
 - **P / Pause Icon**: Pause / Resume / Quit
+
+---
+
+## 🚀 Deployment (GitHub Pages)
+
+This game is automatically built and deployed to **GitHub Pages** on every push to `master` via the [Deploy to GitHub Pages workflow](.github/workflows/deploy-pages.yml).
+
+### Live Game
+
+After the first successful deployment:
+
+```text
+https://<your-username>.github.io/neon_defender/
+```
+
+### One-Time GitHub Setup
+
+1. Go to your repository **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push to (or merge into) the `master` branch — the workflow builds the game with Vite and publishes the contents of `dist/` to GitHub Pages.
+
+### How the Workflow Deploys
+
+- **Trigger**: Runs on every push to `master` (or manually via *workflow_dispatch*).
+- **Build**: Checks out the code, installs dependencies, and runs `npm run build -- --base=./` so the game is built with a relative asset base (required for subpath hosting).
+- **Docs**: Copies `README.md` into `dist/` and adds a `.nojekyll` marker so the published site includes the documentation and is served without Jekyll processing.
+- **Publish**: Uploads the `dist/` folder as a GitHub Pages artifact and deploys it to the `github-pages` environment.
+
+### Local Verification
+
+```bash
+npm run build
+npm run preview -- --host
+```
