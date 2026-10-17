@@ -85,10 +85,10 @@ This game is automatically built and deployed to **GitHub Pages** on every push 
 
 ### Live Game
 
-After the first successful deployment:
+The game is live at:
 
 ```text
-https://<your-username>.github.io/neon_defender/
+https://marco-gallegos.github.io/neon_defender/
 ```
 
 ### One-Time GitHub Setup
