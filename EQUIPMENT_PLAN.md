@@ -12,7 +12,7 @@
 - **Loadout:** fixed slots per category — Shield ×1, Gun ×1, Material ×2, Drone ×2, Skin ×1.
 - **Economy:** cut enemy shard drops by **70%** — this is **permanent** (confirmed). Add **Nano Crystals** as the scarce upgrade currency. Starting shards are **0** (earn everything).
 - **Drops:** enemies roll for equipment (tier weighted by progress; early = mostly C, rare A/B; S near endgame/bosses). Bosses guarantee drops.
-- **Fusion:** C→B→A→S using crystals + shards + duplicate of same category+tier. **S + S fusion** (same category) → one **S+** item with the union of both effect sets ×1.25 (lots of shards + crystals).
+- **Fusion:** C→B→A→S uses **shards + crystals only (no duplicates)**. **Merging** any two **S/S+ items of the same category** → one **S+** carrying **all effects from both inputs** (same-stat effects stack, then ×1.25).
 - **Store:** rotating premium stock, very expensive (hard but reachable), shards + crystals.
 - **Skins:** **cosmetic only** — themed overlays (Winter, Spooky, Neon, Chrome), no stat effect beyond the cosmetic emblem/trail (confirmed).
 - **Secondary weapons:** only `seeker` unlocked at start; `railgun`, `cluster`, `vortex` must be bought.
@@ -45,9 +45,9 @@
 - Extra: **S+ merge tier** added — `TIER_META['S+']` (merge-only), never in `rollTier`/store, `fuseSSItems` → S+ with 1.25× fusion bonus.
 
 ## Phase 4 — Fusion bench & premium store
-- [ ] 4.1 Fusion UI: tier-up (crystals + shards + dupe) and S+S dual-effect fusion → S+.
+- [x] 4.1 Fusion UI: **tier-up C→B→A→S with shards + crystals (NO duplicates)** and **S/S+ + S/S+ merge → S+ keeping all effects**. Buttons live on each Arsenal card.
 - [ ] 4.2 Store UI: rotating premium stock, very high prices.
-- [ ] 4.3 Persistence + guard rails (can't fuse equipped/last item).
+- [ ] 4.3 Persistence + guard rails (can't merge equipped/last item).
 
 ## Phase 5 — Skins, polish, economy validation
 - [ ] 5.1 Skin templates + cosmetic overlays (cosmetic-only, confirmed).

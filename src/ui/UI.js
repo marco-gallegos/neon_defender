@@ -1,6 +1,6 @@
 // UI Screen Management, Shop Rendering, Hangar, and HUD Updates
 import { UPGRADES, SHIPS, SECTORS, SECONDARY_WEAPONS, PRIMARY_WEAPONS } from '../systems/UpgradeSystem.js';
-import { CATEGORIES, EQUIP_SLOTS, TIER_META, formatEffect, disassembleValue } from '../systems/Equipment.js';
+import { CATEGORIES, EQUIP_SLOTS, TIER_META, formatEffect, disassembleValue, tierUpRequirement, findMergePartner, applyTierUp, fuseSSItems, S_FUSION_COST } from '../systems/Equipment.js';
 import { Renderer } from '../engine/Renderer.js';
 import { audio } from '../engine/Audio.js';
 import { Storage } from '../engine/Storage.js';
@@ -845,6 +845,26 @@ export class UIManager {
       const crystalVal = disassembleValue(item);
       const slotsFree = this.getEquippedIds(saveData, category).includes(null);
 
+      // --- Upgrade / merge eligibility ---
+      const tierReq = tierUpRequirement(item.tier);           // C/B/A -> next tier
+      const partner = tierReq ? null : findMergePartner(saveData.inventory, item); // S/S+ -> merge
+      const playerShards = Number(saveData.shards) || 0;
+      const playerCrystals = Number(saveData.crystals) || 0;
+
+      let upgradeBtnHtml = '';
+      if (tierReq) {
+        const afford = playerShards >= tierReq.shards && playerCrystals >= tierReq.crystals;
+        upgradeBtnHtml = `<button class="neon-btn mini-btn upgrade-btn ${afford ? '' : 'disabled-look'}" style="border-color:${meta.color};color:${meta.color};"
+            title="Upgrade to ${tierReq.nextTier}">⬆ ${tierReq.nextTier} · ${tierReq.shards}◆ ${tierReq.crystals}◆◆</button>`;
+      } else if (partner) {
+        const afford = playerShards >= S_FUSION_COST.shards && playerCrystals >= S_FUSION_COST.crystals;
+        upgradeBtnHtml = `<button class="neon-btn mini-btn merge-btn ${afford ? '' : 'disabled-look'}"
+            title="Merge with ${partner.shortName} into S+">🔀 MERGE · ${S_FUSION_COST.shards}◆ ${S_FUSION_COST.crystals}◆◆</button>`;
+      } else {
+        // S/S+ with no partner — show why the merge is unavailable
+        upgradeBtnHtml = `<span class="equip-merge-hint">🔀 MERGE needs another S/S+ ${catMeta.name}</span>`;
+      }
+
       const card = document.createElement('div');
       card.className = `equip-card ${isEquipped ? 'equipped' : ''}`;
       card.style.borderColor = meta.color;
@@ -864,6 +884,7 @@ export class UIManager {
         </div>
         <div class="equip-effects">${effectsHtml}</div>
         <div class="equip-actions">
+          ${upgradeBtnHtml}
           ${isEquipped
             ? `<span class="equip-equipped-tag">✓ EQUIPPED</span>`
             : (slotsFree
@@ -873,6 +894,68 @@ export class UIManager {
           <button class="neon-btn mini-btn disassemble-btn">🔧 +${crystalVal} ◆◆</button>
         </div>
       `;
+
+      // --- Tier-up action (C/B/A) ---
+      const upgradeBtn = card.querySelector('.upgrade-btn');
+      if (upgradeBtn && tierReq) {
+        upgradeBtn.onclick = () => {
+          if (playerShards < tierReq.shards || playerCrystals < tierReq.crystals) {
+            audio.playShieldHit();
+            alert(`Need ${tierReq.shards} ◆ and ${tierReq.crystals} ◆◆ to upgrade to ${tierReq.nextTier}.`);
+            return;
+          }
+          if (!confirm(`Upgrade ${item.tier} ${item.name} → ${tierReq.nextTier}?\nCost: ${tierReq.shards} ◆ + ${tierReq.crystals} ◆◆`)) return;
+          audio.playPowerup();
+          const upgraded = applyTierUp(item);
+          saveData.shards -= tierReq.shards;
+          saveData.crystals -= tierReq.crystals;
+          // Replace in inventory (preserve equip slot if it was equipped)
+          saveData.inventory = (saveData.inventory || []).map(it => it.id === item.id ? upgraded : it);
+          if (isEquipped) {
+            const ids = this.getEquippedIds(saveData, category);
+            const slotIdx = ids.indexOf(item.id);
+            if (slotIdx >= 0) this.setEquippedSlot(saveData, category, slotIdx, upgraded.id);
+          }
+          Storage.save(saveData);
+          this.renderArsenal();
+          this.renderMenuPreview();
+        };
+      }
+
+      // --- Merge action (S/S+ + S/S+ -> S+) ---
+      const mergeBtn = card.querySelector('.merge-btn');
+      if (mergeBtn && partner) {
+        mergeBtn.onclick = () => {
+          if (playerShards < S_FUSION_COST.shards || playerCrystals < S_FUSION_COST.crystals) {
+            audio.playShieldHit();
+            alert(`Need ${S_FUSION_COST.shards} ◆ and ${S_FUSION_COST.crystals} ◆◆ to merge into S+.`);
+            return;
+          }
+          if (!confirm(`Merge ${item.tier} ${item.name} with ${partner.tier} ${partner.name} → S+?\nCost: ${S_FUSION_COST.shards} ◆ + ${S_FUSION_COST.crystals} ◆◆\n\nThe result keeps ALL effects from both items.`)) return;
+          audio.playPowerup();
+          const merged = fuseSSItems(item, partner);
+          saveData.shards -= S_FUSION_COST.shards;
+          saveData.crystals -= S_FUSION_COST.crystals;
+          saveData.inventory = (saveData.inventory || []).filter(it => it.id !== item.id && it.id !== partner.id);
+          saveData.inventory.push(merged);
+          // If either input was equipped, point that slot at the merged item
+          ['shield', 'gun', 'material', 'drone', 'skin'].forEach(cat => {
+            const slots = EQUIP_SLOTS[cat] || 1;
+            if (slots > 1) {
+              const arr = Array.isArray(saveData.equippedEquipment?.[cat]) ? saveData.equippedEquipment[cat] : [];
+              for (let i = 0; i < slots; i++) {
+                if (arr[i] === item.id || arr[i] === partner.id) this.setEquippedSlot(saveData, cat, i, merged.id);
+              }
+            } else {
+              const cur = saveData.equippedEquipment?.[cat];
+              if (cur === item.id || cur === partner.id) this.setEquippedSlot(saveData, cat, 0, merged.id);
+            }
+          });
+          Storage.save(saveData);
+          this.renderArsenal();
+          this.renderMenuPreview();
+        };
+      }
 
       const equipBtn = card.querySelector('.equip-btn');
       if (equipBtn) {

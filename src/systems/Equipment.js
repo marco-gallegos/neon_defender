@@ -337,10 +337,10 @@ export function disassembleValue(item) {
 
 export function tierUpRequirement(tier) {
   switch (tier) {
-    case 'C': return { nextTier: 'B', shards: 400, crystals: 8, duplicates: 1 };
-    case 'B': return { nextTier: 'A', shards: 1500, crystals: 25, duplicates: 1 };
-    case 'A': return { nextTier: 'S', shards: 5000, crystals: 70, duplicates: 2 };
-    default: return null; // S is max base tier
+    case 'C': return { nextTier: 'B', shards: 400, crystals: 8, duplicates: 0 };
+    case 'B': return { nextTier: 'A', shards: 1500, crystals: 25, duplicates: 0 };
+    case 'A': return { nextTier: 'S', shards: 5000, crystals: 70, duplicates: 0 };
+    default: return null; // S and above advance only via the S/S+ merge
   }
 }
 
@@ -356,21 +356,22 @@ export function findDuplicates(inventory, target, count) {
     .slice(0, count);
 }
 
-// Fuse two S-tier items of the same category into one S+ with both effect sets.
-// The result gets a 1.25x fusion multiplier so it beats either input alone.
+// Merge two S-or-S+ items of the same category into one S+ carrying *every* effect
+// from both inputs (same-stat effects stack, then a 1.25x fusion bonus is applied).
 export function fuseSSItems(a, b) {
   const FUSION_BONUS = 1.25;
   const effects = [];
-  const seen = new Set();
+  const seen = new Map();
   for (const eff of [...(a.effects || []), ...(b.effects || [])]) {
-    const key = eff.stat;
-    if (seen.has(key)) {
-      // stack same-stat effects, then apply the fusion multiplier once
-      const existing = effects.find(e => e.stat === key);
-      if (existing) existing.value = existing.value + eff.value;
+    if (!eff || !eff.stat) continue;
+    const existing = seen.get(eff.stat);
+    if (existing) {
+      // stack same-stat effects
+      existing.value += eff.value;
     } else {
-      effects.push({ stat: eff.stat, value: eff.value });
-      seen.add(key);
+      const entry = { stat: eff.stat, value: eff.value };
+      effects.push(entry);
+      seen.set(eff.stat, entry);
     }
   }
   for (const e of effects) {
@@ -390,6 +391,48 @@ export function fuseSSItems(a, b) {
     fused: true,
     createdAt: Date.now()
   };
+}
+
+/* ------------------------------------------------------------------ *
+ *  TIER-UP (C→B→A→S: shards + crystals only, no duplicate required)
+ * ------------------------------------------------------------------ */
+// Pure: returns a NEW item one tier higher, preserving the template + effects
+// (values are rescaled to the new tier's power). Returns null if not upgradeable.
+export function applyTierUp(item) {
+  if (!item) return null;
+  const req = tierUpRequirement(item.tier);
+  if (!req) return null;
+  const nextTier = req.nextTier;
+  const oldMeta = TIER_META[item.tier] || TIER_META.C;
+  const newMeta = TIER_META[nextTier] || TIER_META.C;
+  const ratio = (newMeta.power || 1) / (oldMeta.power || 1);
+  const effects = (item.effects || []).map(e => ({
+    stat: e.stat,
+    value: Math.round(e.value * ratio * 1000) / 1000
+  }));
+  return {
+    ...item,
+    id: generateEquipmentId(),
+    tier: nextTier,
+    effects,
+    fused: item.fused === true,
+    createdAt: Date.now()
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ *  MERGE PARTNERS (S/S+ + S/S+ → S+)
+ * ------------------------------------------------------------------ */
+export function isMergeTier(tier) {
+  return tier === 'S' || tier === 'S+';
+}
+
+// Find an eligible merge partner for `item`: same category, tier S or S+, not itself.
+export function findMergePartner(inventory, item) {
+  if (!item || !isMergeTier(item.tier) || !Array.isArray(inventory)) return null;
+  return inventory.find(it =>
+    it && it.id !== item.id && it.category === item.category && isMergeTier(it.tier)
+  ) || null;
 }
 
 /* ------------------------------------------------------------------ *

@@ -1092,6 +1092,31 @@ h1, h2, h3 {
   margin-right: auto;
 }
 
+/* Upgrade / merge affordances */
+.upgrade-btn {
+  border-color: rgba(0, 240, 255, 0.6);
+}
+
+.merge-btn {
+  border-color: #ff2fb0;
+  color: #ff2fb0;
+  box-shadow: 0 0 10px rgba(255, 47, 176, 0.3);
+}
+
+.mini-btn.disabled-look {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.equip-merge-hint {
+  font-size: 0.66rem;
+  color: #7d86a8;
+  font-family: var(--font-display);
+  letter-spacing: 0.3px;
+  margin-right: auto;
+  align-self: center;
+}
+
 /* Secondary Weapon Arsenal Cards */
 .secondary-card {
   background: var(--dark-panel);
