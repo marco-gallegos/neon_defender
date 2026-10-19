@@ -231,9 +231,37 @@ h1, h2, h3 {
   text-shadow: 0 0 8px var(--neon-yellow);
 }
 
+.menu-ship-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mstat {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  color: #cfe6ff;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.mstat b {
+  color: var(--neon-cyan);
+  font-weight: 900;
+  margin-right: 3px;
+}
+
 .currency-bar {
   display: flex;
   justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
   width: 100%;
 }
 
@@ -266,6 +294,19 @@ h1, h2, h3 {
   text-shadow: 0 0 6px var(--neon-cyan);
 }
 
+.crystal-pill {
+  border-color: #c77dff;
+  color: #c77dff;
+  box-shadow: 0 0 10px rgba(199, 125, 255, 0.25);
+}
+
+.crystal-icon {
+  font-size: 0.9rem;
+  color: #c77dff;
+  text-shadow: 0 0 8px #c77dff;
+  letter-spacing: -2px;
+}
+
 .shard-label {
   font-size: 0.7rem;
   color: #a0a8cc;
@@ -288,6 +329,17 @@ h1, h2, h3 {
 
 .button-row button {
   flex: 1;
+}
+
+/* Three compact secondary buttons in one row (home screen) */
+.button-row.three-up {
+  gap: 6px;
+}
+
+.button-row.three-up button {
+  font-size: 0.78rem;
+  padding: 11px 6px;
+  letter-spacing: 0.5px;
 }
 
 /* Neon Buttons */
@@ -401,6 +453,31 @@ h1, h2, h3 {
   gap: 6px;
   font-family: var(--font-display);
   font-size: 0.7rem;
+}
+
+.hud-ship-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.hstat {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.4px;
+  color: #cfe6ff;
+  background: rgba(8, 12, 28, 0.72);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.hstat b {
+  color: var(--neon-cyan);
+  font-weight: 900;
+  margin-right: 3px;
 }
 
 .bar-bg {
@@ -778,6 +855,174 @@ h1, h2, h3 {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 90px;
+}
+
+/* ================= ARSENAL (EQUIPMENT) ================= */
+.arsenal-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.arsenal-tabs .shop-tab {
+  flex: 1 1 30%;
+  font-size: 0.72rem;
+  padding: 8px 4px;
+}
+
+.arsenal-slots {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.arsenal-slot {
+  flex: 1 1 90px;
+  min-height: 84px;
+  border-radius: 12px;
+  border: 1.5px dashed rgba(0, 240, 255, 0.3);
+  background: rgba(10, 14, 32, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 6px;
+  text-align: center;
+}
+
+.arsenal-slot.filled {
+  border-style: solid;
+  background: rgba(14, 18, 42, 0.95);
+  box-shadow: inset 0 0 16px rgba(0, 240, 255, 0.12);
+}
+
+.arsenal-slot-tier {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.arsenal-slot-icon { font-size: 1.3rem; }
+.arsenal-slot-name {
+  font-size: 0.65rem;
+  color: #cfd8f5;
+  font-family: var(--font-display);
+  letter-spacing: 0.5px;
+}
+.arsenal-slot-empty {
+  font-size: 0.7rem;
+  color: #6a749b;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+.arsenal-slot-empty span { color: #454e70; font-size: 0.62rem; }
+
+.arsenal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 90px;
+}
+
+.arsenal-empty-msg {
+  text-align: center;
+  color: #8b95bb;
+  font-size: 0.85rem;
+  padding: 30px 12px;
+  line-height: 1.5;
+}
+
+.equip-card {
+  background: var(--dark-panel);
+  border: 1.5px solid rgba(0, 240, 255, 0.25);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.equip-card.equipped {
+  box-shadow: 0 0 14px rgba(57, 255, 20, 0.18);
+}
+
+.equip-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.equip-tier-badge {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.9rem;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.equip-icon { font-size: 1.3rem; }
+.equip-title {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  color: #fff;
+  line-height: 1.2;
+}
+.equip-sub {
+  font-size: 0.68rem;
+  color: var(--neon-cyan);
+  letter-spacing: 0.8px;
+}
+
+.equip-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.equip-effect {
+  font-size: 0.72rem;
+  font-family: var(--font-display);
+  color: #d8e4ff;
+  background: rgba(0, 240, 255, 0.09);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.equip-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.equip-equipped-tag {
+  color: var(--neon-lime);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  margin-right: auto;
+}
+
+.equip-full-tag {
+  color: #ffb300;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  margin-right: auto;
 }
 
 /* Secondary Weapon Arsenal Cards */
@@ -1168,4 +1413,50 @@ h1, h2, h3 {
   flex-direction: column;
   gap: 10px;
   width: 100%;
+}
+
+/* ================= RESPONSIVE COMPACTION ================= */
+/* Edge 30 Pro & similar tall phones (~20:9) — vertical space is the constraint. */
+@media (max-height: 780px) {
+  #screen-main-menu {
+    padding-top: 14px;
+    padding-bottom: 14px;
+    justify-content: center;
+    gap: 10px;
+  }
+  .title-container .neon-badge { font-size: 0.64rem; padding: 2px 8px; }
+  .game-title { font-size: 1.9rem; margin-top: 2px; }
+  .tagline { font-size: 0.72rem; margin-top: 3px; }
+  .menu-ship-preview { margin: 4px 0; }
+  #shipPreviewCanvas {
+    width: 104px;
+    height: 104px;
+  }
+  .ship-name { font-size: 0.95rem; margin-top: 5px; }
+  .menu-ship-stats { margin-top: 5px; }
+  .mstat { font-size: 0.64rem; padding: 2px 6px; }
+  .currency-pill.large { padding: 5px 12px; font-size: 0.95rem; }
+  .currency-bar { gap: 8px; }
+  .menu-actions { gap: 8px; }
+  .primary-btn, .arena-btn { font-size: 0.95rem; padding: 11px 16px; }
+  .button-row.three-up button { font-size: 0.72rem; padding: 9px 4px; }
+  .mini-btn { font-size: 0.76rem; padding: 7px 12px; }
+}
+
+@media (max-height: 640px) {
+  .game-title { font-size: 1.6rem; }
+  .tagline { display: none; }
+  #shipPreviewCanvas { width: 84px; height: 84px; }
+  .menu-ship-stats { display: none; }
+  .primary-btn, .arena-btn { font-size: 0.88rem; padding: 9px 14px; }
+  .menu-actions { gap: 6px; }
+  .currency-pill.large { font-size: 0.85rem; padding: 4px 10px; }
+}
+
+/* Narrow screens: keep the three-up row legible */
+@media (max-width: 360px) {
+  .button-row.three-up button {
+    font-size: 0.68rem;
+    letter-spacing: 0;
+  }
 }

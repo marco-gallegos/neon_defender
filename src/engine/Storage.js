@@ -2,13 +2,22 @@
 const STORAGE_KEY = 'neon_defender_savedata_v1';
 
 const DEFAULT_DATA = {
-  shards: 800, // Starter bonus for immediate fun testing of new ships & weapons
+  shards: 0, // Start from zero — earn everything through gameplay
+  crystals: 0, // Nano Crystals: scarce currency for equipment upgrades/fusion
   equippedShip: 'alpha_dart',
   unlockedShips: ['alpha_dart'],
+  inventory: [], // Equipment instances (see systems/Equipment.js)
+  equippedEquipment: {
+    shield: null,
+    gun: null,
+    material: [null, null],
+    drone: [null, null],
+    skin: null
+  },
   equippedPrimary: 'plasma',
   unlockedPrimaries: ['plasma', 'laser', 'spread', 'wave'],
   equippedSecondary: 'seeker',
-  unlockedSecondaries: ['seeker', 'railgun', 'cluster'],
+  unlockedSecondaries: ['seeker'],
   secondaryUpgrades: {
     seeker: 1,
     railgun: 1,
@@ -133,10 +142,50 @@ export class Storage {
         ? parsed.equippedPrimary
         : 'plasma';
 
+      // --- Equipment system ---
+      const safeCrystals = sanitizeNumber(parsed?.crystals, 0, 0);
+
+      const safeInventory = Array.isArray(parsed?.inventory)
+        ? parsed.inventory.filter(it =>
+            it && typeof it === 'object' &&
+            typeof it.id === 'string' &&
+            typeof it.tier === 'string' &&
+            typeof it.category === 'string' &&
+            Array.isArray(it.effects)
+          )
+        : [];
+
+      const safeEquippedEquipment = {
+        shield: null,
+        gun: null,
+        material: [null, null],
+        drone: [null, null],
+        skin: null
+      };
+      if (parsed?.equippedEquipment && typeof parsed.equippedEquipment === 'object') {
+        const invIds = new Set(safeInventory.map(i => i.id));
+        for (const cat of Object.keys(safeEquippedEquipment)) {
+          const def = DEFAULT_DATA.equippedEquipment[cat];
+          const val = parsed.equippedEquipment[cat];
+          if (Array.isArray(def)) {
+            const arr = Array.isArray(val) ? val.slice(0, def.length) : [];
+            safeEquippedEquipment[cat] = def.map((_, i) => {
+              const id = arr[i];
+              return (typeof id === 'string' && invIds.has(id)) ? id : null;
+            });
+          } else {
+            safeEquippedEquipment[cat] = (typeof val === 'string' && invIds.has(val)) ? val : null;
+          }
+        }
+      }
+
       return {
         ...DEFAULT_DATA,
         ...parsed,
         shards: safeShards,
+        crystals: safeCrystals,
+        inventory: safeInventory,
+        equippedEquipment: safeEquippedEquipment,
         equippedShip: safeEquippedShip,
         unlockedShips: safeUnlockedShips,
         equippedPrimary: safeEquippedPrimary,

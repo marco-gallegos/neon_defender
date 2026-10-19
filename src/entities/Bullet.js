@@ -480,6 +480,21 @@ export class Bullet {
         ctx.rotate(Math.atan2(this.vy, this.vx) - this.animAngle);
         this.drawShipShape(ctx, this.radius * 0.85);
 
+      } else if (this.type === 'flame') {
+        // Short-range incinerator plume (soft expanding fire blob)
+        const lifeFrac = Math.max(0, Math.min(1, this.life / (this.maxLife || 0.4)));
+        const grow = 1 + (1 - lifeFrac) * 0.8;
+        ctx.globalAlpha = 0.45 + lifeFrac * 0.55;
+        ctx.fillStyle = '#ff5500';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * grow, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffcc00';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * grow * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
       } else {
         // Standard high-velocity projectile — silhouette varies per ship
         this.drawShipBullet(ctx);

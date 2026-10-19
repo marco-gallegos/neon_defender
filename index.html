@@ -32,6 +32,9 @@
               <div class="bar-bg"><div id="shield-bar-fill" class="bar-fill"></div></div>
               <span id="shield-text">50/50</span>
             </div>
+            <div id="hud-ship-stats" class="hud-ship-stats">
+              <!-- Populated by JS: SPD / DMG / SHD -->
+            </div>
           </div>
           
           <div class="hud-center">
@@ -43,6 +46,10 @@
             <div class="currency-pill">
               <span class="shard-icon">◆</span>
               <span id="hud-shards">0</span>
+            </div>
+            <div class="currency-pill crystal-pill" title="Nano Crystals">
+              <span class="crystal-icon">◆◆</span>
+              <span id="hud-crystals">0</span>
             </div>
             <button id="btn-pause" class="icon-btn" aria-label="Pause">⏸</button>
           </div>
@@ -99,6 +106,9 @@
         <div class="menu-ship-preview">
           <canvas id="shipPreviewCanvas" width="140" height="140"></canvas>
           <div id="selected-ship-name" class="ship-name">CYBER DART</div>
+          <div id="menu-ship-stats" class="menu-ship-stats">
+            <!-- Populated by JS: Speed / Damage / Shield / Shard -->
+          </div>
           <div class="preview-badges-row">
             <div id="selected-primary-badge" class="secondary-preview-badge primary-badge-cyan">⚡ PULSE CANNON</div>
             <div id="selected-secondary-badge" class="secondary-preview-badge">🚀 SEEKER MISSILES</div>
@@ -111,6 +121,11 @@
             <span id="menu-shards">0</span>
             <span class="shard-label">NEON SHARDS</span>
           </div>
+          <div class="currency-pill large crystal-pill">
+            <span class="crystal-icon">◆◆</span>
+            <span id="menu-crystals">0</span>
+            <span class="shard-label">NANO CRYSTALS</span>
+          </div>
         </div>
 
         <div class="menu-actions">
@@ -122,12 +137,15 @@
             <span class="btn-shine"></span>
             ⚔️ ENDLESS ARENA <span class="hot-badge">FARM $</span>
           </button>
-          <div class="button-row">
+          <div class="button-row three-up">
             <button id="btn-open-shop" class="neon-btn secondary-btn">
               ⚡ WORKSHOP
             </button>
             <button id="btn-open-hangar" class="neon-btn secondary-btn">
               🛸 HANGAR
+            </button>
+            <button id="btn-open-arsenal" class="neon-btn secondary-btn">
+              🎒 ARSENAL
             </button>
           </div>
           <button id="btn-open-settings" class="neon-btn mini-btn">
@@ -145,6 +163,10 @@
             <span class="shard-icon">◆</span>
             <span id="campaign-shards">0</span>
           </div>
+          <div class="currency-pill small crystal-pill">
+            <span class="crystal-icon">◆◆</span>
+            <span id="campaign-crystals">0</span>
+          </div>
         </div>
         <div class="sectors-grid" id="sectors-container">
           <!-- Populated by JS -->
@@ -159,6 +181,10 @@
           <div class="currency-pill">
             <span class="shard-icon">◆</span>
             <span id="shop-shards">0</span>
+          </div>
+          <div class="currency-pill crystal-pill">
+            <span class="crystal-icon">◆◆</span>
+            <span id="shop-crystals">0</span>
           </div>
         </div>
         <div class="shop-tabs">
@@ -180,6 +206,42 @@
         </div>
       </div>
 
+      <!-- Arsenal / Equipment Screen -->
+      <div id="screen-arsenal" class="ui-screen hidden">
+        <div class="screen-header">
+          <button id="btn-arsenal-back" class="neon-btn mini-btn">◀ BACK</button>
+          <h2>ARSENAL</h2>
+          <div class="currency-pill">
+            <span class="shard-icon">◆</span>
+            <span id="arsenal-shards">0</span>
+          </div>
+          <div class="currency-pill crystal-pill">
+            <span class="crystal-icon">◆◆</span>
+            <span id="arsenal-crystals">0</span>
+          </div>
+        </div>
+
+        <div class="arsenal-tabs">
+          <button id="tab-arsenal-shield" class="shop-tab active">🛡️ SHIELD</button>
+          <button id="tab-arsenal-gun" class="shop-tab">🔫 GUN</button>
+          <button id="tab-arsenal-material" class="shop-tab">⚙️ MATERIAL</button>
+          <button id="tab-arsenal-drone" class="shop-tab">🛸 DRONE</button>
+          <button id="tab-arsenal-skin" class="shop-tab">🎨 SKIN</button>
+        </div>
+
+        <div class="arsenal-slots" id="arsenal-slots-container">
+          <!-- Equipped slots populated by JS -->
+        </div>
+
+        <div class="shop-tip" id="arsenal-tip-text">
+          💡 Equip gear dropped by enemies. Disassemble duplicates into ◆◆ crystals.
+        </div>
+
+        <div class="arsenal-list" id="arsenal-items-container">
+          <!-- Inventory populated by JS -->
+        </div>
+      </div>
+
       <!-- Hangar / Ship Select Screen -->
       <div id="screen-hangar" class="ui-screen hidden">
         <div class="screen-header">
@@ -188,6 +250,10 @@
           <div class="currency-pill">
             <span class="shard-icon">◆</span>
             <span id="hangar-shards">0</span>
+          </div>
+          <div class="currency-pill crystal-pill">
+            <span class="crystal-icon">◆◆</span>
+            <span id="hangar-crystals">0</span>
           </div>
         </div>
         <div class="hangar-carousel" id="hangar-ships-container">
@@ -274,6 +340,10 @@
               <span>Shards Harvested:</span>
               <span id="stat-shards" class="stat-val">+450 ◆</span>
             </div>
+            <div class="stat-row">
+              <span>Crystals Harvested:</span>
+              <span id="stat-crystals" class="stat-val">+0 ◆◆</span>
+            </div>
           </div>
 
           <div class="gameover-actions">
@@ -308,6 +378,10 @@
             <div class="stat-row highlight">
               <span>Total Shards Collected:</span>
               <span id="vic-total-shards" class="stat-val">+750 ◆</span>
+            </div>
+            <div class="stat-row">
+              <span>Crystals Collected:</span>
+              <span id="vic-crystals" class="stat-val">+0 ◆◆</span>
             </div>
           </div>
 

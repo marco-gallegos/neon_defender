@@ -1,5 +1,6 @@
 // UI Screen Management, Shop Rendering, Hangar, and HUD Updates
 import { UPGRADES, SHIPS, SECTORS, SECONDARY_WEAPONS, PRIMARY_WEAPONS } from '../systems/UpgradeSystem.js';
+import { CATEGORIES, EQUIP_SLOTS, TIER_META, formatEffect, disassembleValue } from '../systems/Equipment.js';
 import { Renderer } from '../engine/Renderer.js';
 import { audio } from '../engine/Audio.js';
 import { Storage } from '../engine/Storage.js';
@@ -14,6 +15,7 @@ export class UIManager {
       campaign: document.getElementById('screen-campaign'),
       shop: document.getElementById('screen-shop'),
       hangar: document.getElementById('screen-hangar'),
+      arsenal: document.getElementById('screen-arsenal'),
       settings: document.getElementById('screen-settings'),
       pause: document.getElementById('screen-pause'),
       gameover: document.getElementById('screen-gameover'),
@@ -43,6 +45,7 @@ export class UIManager {
     this.bannerNotice = document.getElementById('banner-notice');
 
     this.currentShopTab = 'systems';
+    this.currentArsenalTab = 'shield';
 
     this.bindEvents();
     this.refreshCurrencyDisplays();
@@ -96,6 +99,12 @@ export class UIManager {
       this.showScreen('hangar');
     };
 
+    document.getElementById('btn-open-arsenal').onclick = () => {
+      audio.playClick();
+      this.renderArsenal();
+      this.showScreen('arsenal');
+    };
+
     document.getElementById('btn-open-settings').onclick = () => {
       audio.playClick();
       this.showScreen('settings');
@@ -115,6 +124,12 @@ export class UIManager {
     };
 
     document.getElementById('btn-hangar-back').onclick = () => {
+      audio.playClick();
+      this.renderMenuPreview();
+      this.showScreen('menu');
+    };
+
+    document.getElementById('btn-arsenal-back').onclick = () => {
       audio.playClick();
       this.renderMenuPreview();
       this.showScreen('menu');
@@ -154,6 +169,13 @@ export class UIManager {
     if (tabSystems) tabSystems.onclick = () => { audio.playClick(); this.switchShopTab('systems'); };
     if (tabSecondaries) tabSecondaries.onclick = () => { audio.playClick(); this.switchShopTab('secondaries'); };
     if (tabPrimaries) tabPrimaries.onclick = () => { audio.playClick(); this.switchShopTab('primaries'); };
+
+    // Arsenal category tabs
+    const arsenalTabs = ['shield', 'gun', 'material', 'drone', 'skin'];
+    arsenalTabs.forEach(cat => {
+      const btn = document.getElementById(`tab-arsenal-${cat}`);
+      if (btn) btn.onclick = () => { audio.playClick(); this.switchArsenalTab(cat); };
+    });
 
     // Primary mode switch pill (HUD)
     const primBtn = document.getElementById('btn-primary-mode');
@@ -259,9 +281,16 @@ export class UIManager {
   refreshCurrencyDisplays() {
     const rawAmt = Number(this.game?.saveData?.shards);
     const amt = (Number.isFinite(rawAmt) && rawAmt >= 0) ? Math.round(rawAmt) : 0;
-    ['menu-shards', 'campaign-shards', 'shop-shards', 'hangar-shards'].forEach(id => {
+    ['menu-shards', 'campaign-shards', 'shop-shards', 'hangar-shards', 'arsenal-shards'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.textContent = amt.toLocaleString();
+    });
+
+    const rawCrystals = Number(this.game?.saveData?.crystals);
+    const crystals = (Number.isFinite(rawCrystals) && rawCrystals >= 0) ? Math.round(rawCrystals) : 0;
+    ['menu-crystals', 'campaign-crystals', 'shop-crystals', 'hangar-crystals', 'arsenal-crystals'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = crystals.toLocaleString();
     });
   }
 
@@ -271,6 +300,18 @@ export class UIManager {
     const nameEl = document.getElementById('selected-ship-name');
     if (nameEl) nameEl.textContent = currentShip.name;
     Renderer.drawShipPreview(previewCanvas, currentShip);
+
+    // Compact ship stats strip (Speed / Damage / Shield / Shard)
+    const statsEl = document.getElementById('menu-ship-stats');
+    if (statsEl) {
+      const s = currentShip.stats || {};
+      statsEl.innerHTML = `
+        <span class="mstat"><b>SPD</b> ${Math.round((s.speedMult ?? 1) * 100)}%</span>
+        <span class="mstat"><b>DMG</b> ${Math.round((s.damageMult ?? 1) * 100)}%</span>
+        <span class="mstat"><b>SHD</b> ${Math.round((s.shieldMult ?? 1) * 100)}%</span>
+        <span class="mstat"><b>◆</b> ${Math.round((s.shardBonus ?? 1) * 100)}%</span>
+      `;
+    }
 
     // Show equipped primary weapon badge
     const primId = this.game.saveData.equippedPrimary || 'plasma';
@@ -631,6 +672,169 @@ export class UIManager {
   }
 
 
+  // ================= ARSENAL (EQUIPMENT) =================
+
+  switchArsenalTab(category) {
+    this.currentArsenalTab = category;
+    ['shield', 'gun', 'material', 'drone', 'skin'].forEach(cat => {
+      const btn = document.getElementById(`tab-arsenal-${cat}`);
+      if (btn) btn.classList.toggle('active', cat === category);
+    });
+    this.renderArsenal();
+  }
+
+  // Helper: read equipped id(s) for a category
+  getEquippedIds(saveData, category) {
+    const eq = saveData.equippedEquipment || {};
+    const slots = EQUIP_SLOTS[category] || 1;
+    if (slots > 1) {
+      const arr = Array.isArray(eq[category]) ? eq[category] : [];
+      return Array.from({ length: slots }, (_, i) => arr[i] || null);
+    }
+    return [eq[category] || null];
+  }
+
+  setEquippedSlot(saveData, category, index, itemId) {
+    if (!saveData.equippedEquipment) saveData.equippedEquipment = {};
+    const slots = EQUIP_SLOTS[category] || 1;
+    if (slots > 1) {
+      if (!Array.isArray(saveData.equippedEquipment[category])) {
+        saveData.equippedEquipment[category] = Array(slots).fill(null);
+      }
+      saveData.equippedEquipment[category][index] = itemId;
+    } else {
+      saveData.equippedEquipment[category] = itemId;
+    }
+  }
+
+  renderArsenal() {
+    this.refreshCurrencyDisplays();
+    const saveData = this.game.saveData;
+    const category = this.currentArsenalTab || 'shield';
+    const catMeta = CATEGORIES[category];
+
+    // --- Equipped slots ---
+    const slotsContainer = document.getElementById('arsenal-slots-container');
+    if (slotsContainer) {
+      slotsContainer.innerHTML = '';
+      const equippedIds = this.getEquippedIds(saveData, category);
+      equippedIds.forEach((id, index) => {
+        const item = id ? (saveData.inventory || []).find(it => it && it.id === id) : null;
+        const slot = document.createElement('div');
+        slot.className = `arsenal-slot ${item ? 'filled' : 'empty'}`;
+        if (item) {
+          const meta = TIER_META[item.tier] || TIER_META.C;
+          slot.style.borderColor = meta.color;
+          slot.innerHTML = `
+            <div class="arsenal-slot-tier" style="color:${meta.color}">${item.tier}</div>
+            <div class="arsenal-slot-icon">${item.icon}</div>
+            <div class="arsenal-slot-name">${item.shortName}</div>
+          `;
+          slot.onclick = () => {
+            audio.playClick();
+            this.setEquippedSlot(saveData, category, index, null);
+            Storage.save(saveData);
+            this.renderArsenal();
+          };
+        } else {
+          slot.innerHTML = `<div class="arsenal-slot-empty">SLOT ${index + 1}<br><span>EMPTY</span></div>`;
+        }
+        slotsContainer.appendChild(slot);
+      });
+    }
+
+    // --- Inventory list for this category ---
+    const container = document.getElementById('arsenal-items-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const equippedIds = this.getEquippedIds(saveData, category).filter(Boolean);
+    const items = (saveData.inventory || []).filter(it => it && it.category === category);
+
+    if (items.length === 0) {
+      container.innerHTML = `<div class="arsenal-empty-msg">No ${catMeta.name} gear yet — destroy enemies to find drops! 🎁</div>`;
+      return;
+    }
+
+    // Sort: equipped first, then tier S->C
+    const tierOrder = { 'S+': 0, S: 1, A: 2, B: 3, C: 4 };
+    items.sort((a, b) => {
+      const aEq = equippedIds.includes(a.id) ? 0 : 1;
+      const bEq = equippedIds.includes(b.id) ? 0 : 1;
+      if (aEq !== bEq) return aEq - bEq;
+      return (tierOrder[a.tier] ?? 9) - (tierOrder[b.tier] ?? 9);
+    });
+
+    items.forEach(item => {
+      const meta = TIER_META[item.tier] || TIER_META.C;
+      const isEquipped = equippedIds.includes(item.id);
+      const crystalVal = disassembleValue(item);
+      const slotsFree = this.getEquippedIds(saveData, category).includes(null);
+
+      const card = document.createElement('div');
+      card.className = `equip-card ${isEquipped ? 'equipped' : ''}`;
+      card.style.borderColor = meta.color;
+
+      const effectsHtml = (item.effects || [])
+        .map(e => `<span class="equip-effect">${formatEffect(e.stat, e.value)}</span>`)
+        .join('');
+
+      card.innerHTML = `
+        <div class="equip-card-header">
+          <span class="equip-tier-badge" style="background:${meta.color};color:#06091a;">${item.tier}</span>
+          <span class="equip-icon">${item.icon}</span>
+          <div class="equip-title">
+            <div>${item.name}</div>
+            <div class="equip-sub">${catMeta.name}${item.fused ? ' · FUSED' : ''}</div>
+          </div>
+        </div>
+        <div class="equip-effects">${effectsHtml}</div>
+        <div class="equip-actions">
+          ${isEquipped
+            ? `<span class="equip-equipped-tag">✓ EQUIPPED</span>`
+            : (slotsFree
+                ? `<button class="neon-btn mini-btn equip-btn" style="border-color:${meta.color};color:${meta.color};">EQUIP</button>`
+                : `<span class="equip-full-tag">SLOTS FULL</span>`)
+          }
+          <button class="neon-btn mini-btn disassemble-btn">🔧 +${crystalVal} ◆◆</button>
+        </div>
+      `;
+
+      const equipBtn = card.querySelector('.equip-btn');
+      if (equipBtn) {
+        equipBtn.onclick = () => {
+          audio.playPowerup();
+          const ids = this.getEquippedIds(saveData, category);
+          const freeIdx = ids.indexOf(null);
+          if (freeIdx >= 0) {
+            this.setEquippedSlot(saveData, category, freeIdx, item.id);
+            Storage.save(saveData);
+            this.renderArsenal();
+          }
+        };
+      }
+
+      const disBtn = card.querySelector('.disassemble-btn');
+      if (disBtn) {
+        disBtn.onclick = () => {
+          if (isEquipped) {
+            audio.playShieldHit();
+            alert('Unequip this item before disassembling it.');
+            return;
+          }
+          if (!confirm(`Disassemble ${item.tier} ${item.name} into ${crystalVal} crystals?`)) return;
+          audio.playPowerup();
+          saveData.crystals = (Number(saveData.crystals) || 0) + crystalVal;
+          saveData.inventory = (saveData.inventory || []).filter(it => it && it.id !== item.id);
+          Storage.save(saveData);
+          this.renderArsenal();
+        };
+      }
+
+      container.appendChild(card);
+    });
+  }
+
   // Render Ship Hangar
   renderHangar() {
     this.refreshCurrencyDisplays();
@@ -714,7 +918,7 @@ export class UIManager {
   }
 
   // Update Ingame HUD
-  updateHud(player, waveManager, currentRunShards) {
+  updateHud(player, waveManager, currentRunShards, currentRunCrystals = 0) {
     if (!player) return;
 
     // HP Bar
@@ -745,6 +949,28 @@ export class UIManager {
       : 0;
     const total = bank + current;
     this.hudShards.textContent = total.toLocaleString();
+
+    // Crystals (bank + current run)
+    const crystalBank = (typeof this.game?.saveData?.crystals === 'number' && Number.isFinite(this.game.saveData.crystals))
+      ? Math.max(0, Math.round(this.game.saveData.crystals))
+      : 0;
+    const crystalRun = (typeof currentRunCrystals === 'number' && Number.isFinite(currentRunCrystals))
+      ? Math.max(0, Math.round(currentRunCrystals))
+      : 0;
+    const hudCrystals = document.getElementById('hud-crystals');
+    if (hudCrystals) hudCrystals.textContent = (crystalBank + crystalRun).toLocaleString();
+
+    // Compact live ship stats (Speed / Damage / Shield)
+    const statsEl = document.getElementById('hud-ship-stats');
+    if (statsEl) {
+      const spd = Math.round((player.moveSpeedMult ?? 1) * 100);
+      const dmg = Math.round(player.baseDamage ?? 0);
+      const shd = Math.round(player.maxShield ?? 0);
+      statsEl.innerHTML =
+        `<span class="hstat"><b>SPD</b> ${spd}%</span>` +
+        `<span class="hstat"><b>DMG</b> ${dmg}</span>` +
+        `<span class="hstat"><b>SHD</b> ${shd}</span>`;
+    }
 
     // Weapon level indicator
     this.hudPower.textContent = `WEAPON LVL ${player.weaponLevel}${player.overdriveTimer > 0 ? ' [HYPER]' : ''}`;
@@ -803,24 +1029,33 @@ export class UIManager {
   }
 
   // Show Game Over Modal
-  showGameOver(mode, wave, kills, shardsEarned) {
+  showGameOver(mode, wave, kills, shardsEarned, crystalsEarned = 0) {
     const safeShards = (typeof shardsEarned === 'number' && Number.isFinite(shardsEarned))
       ? Math.max(0, Math.round(shardsEarned))
+      : 0;
+    const safeCrystals = (typeof crystalsEarned === 'number' && Number.isFinite(crystalsEarned))
+      ? Math.max(0, Math.round(crystalsEarned))
       : 0;
     document.getElementById('stat-mode').textContent = mode;
     document.getElementById('stat-wave').textContent = wave;
     document.getElementById('stat-kills').textContent = kills;
     document.getElementById('stat-shards').textContent = `+${safeShards.toLocaleString()} ◆`;
+    const crystalEl = document.getElementById('stat-crystals');
+    if (crystalEl) crystalEl.textContent = `+${safeCrystals.toLocaleString()} ◆◆`;
+    this.refreshCurrencyDisplays();
     this.showScreen('gameover');
   }
 
   // Show Victory Modal
-  showVictory(sectorDef, totalShardsEarned, stars) {
+  showVictory(sectorDef, totalShardsEarned, stars, crystalsEarned = 0) {
     const safeBonus = (typeof sectorDef?.rewardShards === 'number' && Number.isFinite(sectorDef.rewardShards))
       ? Math.max(0, Math.round(sectorDef.rewardShards))
       : 0;
     const safeTotal = (typeof totalShardsEarned === 'number' && Number.isFinite(totalShardsEarned))
       ? Math.max(0, Math.round(totalShardsEarned))
+      : 0;
+    const safeCrystals = (typeof crystalsEarned === 'number' && Number.isFinite(crystalsEarned))
+      ? Math.max(0, Math.round(crystalsEarned))
       : 0;
 
     const isFinalSector = (sectorDef.id || 0) >= SECTORS.length;
@@ -841,6 +1076,8 @@ export class UIManager {
     document.getElementById('vic-sector').textContent = sectorDef.name;
     document.getElementById('vic-bonus').textContent = `+${safeBonus.toLocaleString()} ◆`;
     document.getElementById('vic-total-shards').textContent = `+${safeTotal.toLocaleString()} ◆`;
+    const vicCrystals = document.getElementById('vic-crystals');
+    if (vicCrystals) vicCrystals.textContent = `+${safeCrystals.toLocaleString()} ◆◆`;
 
     const starsContainer = document.getElementById('victory-stars');
     starsContainer.innerHTML = '';

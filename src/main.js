@@ -8,6 +8,8 @@ import { Player } from './entities/Player.js';
 import { WaveManager } from './systems/WaveManager.js';
 import { FloatingText, Particle } from './entities/Particle.js';
 import { SECTORS } from './systems/UpgradeSystem.js';
+import { EquipmentItem, CrystalItem } from './entities/EquipmentDrop.js';
+import { rollEquipmentDrop, rollCrystalDrop } from './systems/Equipment.js';
 
 class Game {
   constructor() {
@@ -43,6 +45,7 @@ class Game {
 
     // Run Stats
     this.runShards = 0;
+    this.runCrystals = 0;
     this.runKills = 0;
     this.runScore = 0;
 
@@ -75,6 +78,7 @@ class Game {
     this.currentMode = mode;
     this.currentSectorId = sectorId;
     this.runShards = 0;
+    this.runCrystals = 0;
     this.runKills = 0;
     this.runScore = 0;
 
@@ -135,9 +139,57 @@ class Game {
     const shipBonus = (this.player && this.player.shipDef && typeof this.player.shipDef.stats?.shardBonus === 'number')
       ? this.player.shipDef.stats.shardBonus
       : 1.0;
+    const luckMult = (this.player && Number.isFinite(this.player.luckMult) && this.player.luckMult > 0)
+      ? this.player.luckMult
+      : 1.0;
     const safeWaveMult = Number.isFinite(waveMult) && waveMult > 0 ? waveMult : 1.0;
     const safeShipBonus = Number.isFinite(shipBonus) && shipBonus > 0 ? shipBonus : 1.0;
-    return safeWaveMult * safeShipBonus;
+    // Global economy rebalance: enemy shard drops cut by 70% (0.3x).
+    const SHARD_DROP_SCALE = 0.3;
+    return safeWaveMult * safeShipBonus * luckMult * SHARD_DROP_SCALE;
+  }
+
+  // 0 (game start) .. 1 (endgame) — drives equipment tier weights.
+  getDropProgress() {
+    if (!this.waveManager) return 0;
+    if (this.currentMode === 'ARENA') {
+      return Math.max(0, Math.min(1, (this.waveManager.currentWave || 1) / 90));
+    }
+    const sectorCount = Math.max(1, SECTORS.length);
+    const sectorIdx = Math.max(0, (this.currentSectorId || 1) - 1);
+    const wave = this.waveManager.currentWave || 1;
+    const maxWaves = this.waveManager.maxWaves || 10;
+    const waveFrac = Math.max(0, Math.min(1, wave / maxWaves));
+    return Math.max(0, Math.min(1, (sectorIdx + waveFrac) / sectorCount));
+  }
+
+  rollEnemyDrops(entity, isBoss = false) {
+    if (!entity) return;
+    const progress = this.getDropProgress();
+    const luckMult = (this.player && Number.isFinite(this.player.luckMult) && this.player.luckMult > 0)
+      ? this.player.luckMult
+      : 1.0;
+
+    const pushEquipment = (eq, ox = 0, oy = 0) => {
+      if (!eq) return;
+      this.items.push(new EquipmentItem(entity.x + ox, entity.y + oy, eq));
+    };
+
+    pushEquipment(rollEquipmentDrop({ progress, luckMult, isBoss }), 0, 0);
+    if (isBoss) {
+      // Bosses guarantee a second roll and skew toward higher tiers.
+      pushEquipment(rollEquipmentDrop({ progress, luckMult, isBoss: true }), 26, -18);
+    }
+
+    const crystalDrop = rollCrystalDrop({ progress, luckMult, isBoss });
+    if (crystalDrop) {
+      const amount = Math.max(1, Math.round(crystalDrop.amount || 1));
+      this.items.push(new CrystalItem(
+        entity.x + (Math.random() - 0.5) * 26,
+        entity.y + (Math.random() - 0.5) * 26,
+        amount
+      ));
+    }
   }
 
   handleGameOver(reason = 'HULL INTEGRITY COMPROMISED') {
@@ -151,8 +203,16 @@ class Game {
       ? Math.max(0, Math.round(this.saveData.shards))
       : 0;
 
-    // Commit collected shards to persistent bank with strict validation
+    const safeRunCrystals = (typeof this.runCrystals === 'number' && Number.isFinite(this.runCrystals))
+      ? Math.max(0, Math.round(this.runCrystals))
+      : 0;
+    const currentCrystalBank = (typeof this.saveData.crystals === 'number' && Number.isFinite(this.saveData.crystals))
+      ? Math.max(0, Math.round(this.saveData.crystals))
+      : 0;
+
+    // Commit collected shards & crystals to persistent bank with strict validation
     this.saveData.shards = currentBank + safeRunShards;
+    this.saveData.crystals = currentCrystalBank + safeRunCrystals;
 
     // Save arena records
     if (this.currentMode === 'ARENA') {
@@ -172,7 +232,8 @@ class Game {
       this.currentMode === 'ARENA' ? 'ENDLESS ARENA' : `SECTOR ${this.currentSectorId}`,
       this.waveManager.currentWave,
       this.runKills,
-      safeRunShards
+      safeRunShards,
+      safeRunCrystals
     );
   }
 
@@ -194,6 +255,14 @@ class Game {
     const totalEarned = safeRunShards + bonus;
     this.saveData.shards = currentBank + totalEarned;
 
+    const safeRunCrystals = (typeof this.runCrystals === 'number' && Number.isFinite(this.runCrystals))
+      ? Math.max(0, Math.round(this.runCrystals))
+      : 0;
+    const currentCrystalBank = (typeof this.saveData.crystals === 'number' && Number.isFinite(this.saveData.crystals))
+      ? Math.max(0, Math.round(this.saveData.crystals))
+      : 0;
+    this.saveData.crystals = currentCrystalBank + safeRunCrystals;
+
     // Unlock next sector
     const nextSectorId = this.currentSectorId + 1;
     if (this.saveData.sectors[nextSectorId]) {
@@ -212,7 +281,7 @@ class Game {
 
     Storage.save(this.saveData);
     audio.stopMusic();
-    this.ui.showVictory(sec, totalEarned, stars);
+    this.ui.showVictory(sec, totalEarned, stars, safeRunCrystals);
   }
 
   loop(currentTime) {
@@ -314,6 +383,7 @@ class Game {
         boss.hasLooted = true;
         this.renderer.addShake(18, 0.6);
         boss.onDestroy(this.particles, this.items, this.getLootMultiplier());
+        this.rollEnemyDrops(boss, true);
         this.runKills += 1;
         this.runScore += 2500;
       }
@@ -327,11 +397,12 @@ class Game {
       // Check enemy death
       if (enemy.dead) {
         enemy.onDestroy(this.particles, this.items, this.getLootMultiplier());
+        this.rollEnemyDrops(enemy, false);
         if (typeof this.player.onEnemyKilled === 'function') {
           this.player.onEnemyKilled(enemy, this.floatingTexts);
         }
         this.runKills += 1;
-        this.runScore += (Number(enemy.score) || 50);
+        this.runScore += (Number(enemy.score) || 50) * (this.player.scoreMult || 1);
         this.enemies.splice(i, 1);
         continue;
       }
@@ -431,12 +502,11 @@ class Game {
       }
     }
 
-    // Update Collectibles (Shards & Power-ups)
+    // Update Collectibles (Shards, Crystals, Equipment & Power-ups)
     for (let i = this.items.length - 1; i >= 0; i--) {
       const item = this.items[i];
 
-      if (item.isShard) {
-        // Shard item
+      if (item.isShard || item.isCrystal || item.isEquipment) {
         const alive = item.update(dt, this.player.x, this.player.y, this.player.magnetRadius);
         if (!alive || item.y > h + 40) {
           this.items.splice(i, 1);
@@ -445,13 +515,29 @@ class Game {
 
         // Collection radius
         const d = Math.hypot(item.x - this.player.x, item.y - this.player.y);
-        if (d < item.size + this.player.radius + 6) {
-          audio.playShard();
-          const shardVal = (typeof item.value === 'number' && Number.isFinite(item.value) && item.value > 0)
-            ? Math.round(item.value)
-            : 1;
-          this.runShards = (Number.isFinite(this.runShards) ? this.runShards : 0) + shardVal;
-          this.floatingTexts.push(new FloatingText(item.x, item.y - 12, `+${shardVal}`, '#ffe600'));
+        if (d < item.size + this.player.radius + 8) {
+          if (item.isShard) {
+            audio.playShard();
+            const shardVal = (typeof item.value === 'number' && Number.isFinite(item.value) && item.value > 0)
+              ? Math.round(item.value)
+              : 1;
+            this.runShards = (Number.isFinite(this.runShards) ? this.runShards : 0) + shardVal;
+            this.floatingTexts.push(new FloatingText(item.x, item.y - 12, `+${shardVal}`, '#ffe600'));
+          } else if (item.isCrystal) {
+            audio.playShard();
+            const crystalVal = Math.max(1, Math.round(item.amount || 1));
+            this.runCrystals += crystalVal;
+            this.floatingTexts.push(new FloatingText(item.x, item.y - 12, `+${crystalVal} ◆◆`, '#c77dff', true));
+          } else if (item.isEquipment) {
+            audio.playPowerup();
+            const eq = item.equipment;
+            if (eq && Array.isArray(this.saveData.inventory) && !this.saveData.inventory.some(x => x && x.id === eq.id)) {
+              this.saveData.inventory.push(eq);
+              Storage.save(this.saveData);
+            }
+            const color = item.meta?.color || '#ffb300';
+            this.floatingTexts.push(new FloatingText(item.x, item.y - 16, `${item.tier} · ${eq?.shortName || 'GEAR'}`, color, true));
+          }
           this.items.splice(i, 1);
           continue;
         }
@@ -487,7 +573,7 @@ class Game {
     }
 
     // Update UI HUD values
-    this.ui.updateHud(this.player, this.waveManager, this.runShards);
+    this.ui.updateHud(this.player, this.waveManager, this.runShards, this.runCrystals);
   }
 
   renderGame() {
