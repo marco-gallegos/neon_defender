@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "changelog": "git-cliff -o CHANGELOG.md",
+    "changelog:unreleased": "git-cliff --unreleased -o CHANGELOG.md"
   },
   "devDependencies": {
     "vite": "^6.0.0",

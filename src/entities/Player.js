@@ -63,6 +63,27 @@ export class Player {
     this.empCooldown = 0;
     this.empMaxCooldown = this.empData.cooldown;
 
+    // Ship-Specific Passive Perk
+    this.damageReduction = 0;
+    this.pierceBonus = 0;
+    switch (this.shipDef.passiveId) {
+      case 'nimble': // ALPHA DART: smaller hitbox + stronger pickup magnet
+        this.radius = 15;
+        this.magnetRadius *= 1.15;
+        break;
+      case 'bulwark': // CYBER CUBE: heavy plating reduces all incoming damage
+        this.damageReduction = 0.12;
+        break;
+      case 'emberfire': // NEON PHOENIX: extra critical strike chance
+        this.critData = { ...this.critData, chance: Math.min(0.6, this.critData.chance + 0.08) };
+        break;
+      case 'voidrounds': // VOID SLICER: primary shots pierce an extra target
+        this.pierceBonus = 1;
+        break;
+      default:
+        break;
+    }
+
     // Wingman Drones (0 to 4)
     this.droneCount = this.upgrades.drones || 0;
     this.droneAngle = 0;
@@ -333,6 +354,8 @@ export class Player {
   fireWeapon(bullets, particles) {
     audio.playShoot(true);
 
+    const startIdx = bullets.length;
+    const shipShape = this.shipDef.bulletShape || null;
     const isCrit = Math.random() < this.critData.chance;
     const baseMult = (this.primaryDef.damageMult || 1.0) * (isCrit ? this.critData.mult : 1.0) * (this.overdriveTimer > 0 ? 1.5 : 1.0);
     const dmg = this.baseDamage * baseMult;
@@ -341,7 +364,7 @@ export class Player {
 
     if (gunType === 'laser') {
       // PHOTON LANCE: Continuous Piercing Beams cutting down enemy columns
-      const pierce = (this.primaryDef.pierce || 3) + Math.floor(this.weaponLevel / 2);
+      const pierce = (this.primaryDef.pierce || 3) + Math.floor(this.weaponLevel / 2) + this.pierceBonus;
       const bSpeed = -720;
       const opts = { isCrit, color: bulletColor, radius: 5, type: 'laser', pierce };
 
@@ -400,7 +423,7 @@ export class Player {
       if (this.weaponLevel >= 2) {
         // Center piercing core
         bullets.push(new Bullet(this.x, this.y - 16, 0, bSpeed * 1.05, dmg * 0.9, true, {
-          isCrit, color: '#ffffff', radius: 4.5, type: 'plasma'
+          isCrit, color: '#ffffff', radius: 4.5, type: 'plasma', pierce: 1 + this.pierceBonus
         }));
       }
       if (this.weaponLevel >= 3) {
@@ -419,7 +442,7 @@ export class Player {
     } else {
       // PULSE CANNON (Classic High Cadence Plasma)
       const bulletSpeed = -620;
-      const opts = { isCrit, color: bulletColor, radius: 5, type: 'plasma' };
+      const opts = { isCrit, color: bulletColor, radius: 5, type: 'plasma', pierce: 1 + this.pierceBonus };
 
       if (this.weaponLevel === 1) {
         bullets.push(new Bullet(this.x, this.y - 15, 0, bulletSpeed, dmg, true, opts));
@@ -444,6 +467,13 @@ export class Player {
           const vy = -Math.cos(rad) * 640;
           bullets.push(new Bullet(this.x, this.y - 14, vx, vy, dmg * 0.8, true, opts));
         });
+      }
+    }
+
+    // Stamp ship-specific silhouettes onto every primary projectile
+    if (shipShape) {
+      for (let i = startIdx; i < bullets.length; i++) {
+        bullets[i].shape = shipShape;
       }
     }
   }
@@ -495,6 +525,11 @@ export class Player {
 
   takeDamage(amount, particles, floatingTexts) {
     if (this.invulnerableTimer > 0 || this.isDead) return;
+
+    // Ship passive damage mitigation (e.g. CYBER CUBE bulwark plating)
+    if (this.damageReduction > 0) {
+      amount *= (1 - this.damageReduction);
+    }
 
     this.shieldRegenTimer = 0;
     this.shieldHitEffect = 1.0;

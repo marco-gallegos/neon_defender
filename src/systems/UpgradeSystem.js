@@ -8,13 +8,15 @@ export const SHIPS = {
     cost: 0,
     color: '#00f0ff',
     secondaryColor: '#0066ff',
+    bulletShape: 'dart',
+    passiveId: 'nimble',
     stats: {
       speedMult: 1.0,
       damageMult: 1.0,
       shieldMult: 1.0,
       shardBonus: 1.0
     },
-    perkText: 'Balanced & Responsive'
+    perkText: 'Nimble Frame (Smaller Hitbox & +15% Magnet)'
   },
   cyber_cube: {
     id: 'cyber_cube',
@@ -23,13 +25,15 @@ export const SHIPS = {
     cost: 400,
     color: '#ffe600',
     secondaryColor: '#39ff14',
+    bulletShape: 'cube',
+    passiveId: 'bulwark',
     stats: {
       speedMult: 0.9,
       damageMult: 1.1,
       shieldMult: 1.4,
       shardBonus: 1.1
     },
-    perkText: '+40% Shield Capacity'
+    perkText: 'Bulwark Plating (+40% Shield & -12% Damage Taken)'
   },
   neon_phoenix: {
     id: 'neon_phoenix',
@@ -38,13 +42,15 @@ export const SHIPS = {
     cost: 1200,
     color: '#ff007f',
     secondaryColor: '#ff7700',
+    bulletShape: 'phoenix',
+    passiveId: 'emberfire',
     stats: {
       speedMult: 1.15,
       damageMult: 1.25,
       shieldMult: 0.95,
       shardBonus: 1.2
     },
-    perkText: '+25% Rapid Fire & Speed'
+    perkText: 'Emberfire (+25% Rapid Fire & +8% Crit Chance)'
   },
   void_slicer: {
     id: 'void_slicer',
@@ -53,13 +59,15 @@ export const SHIPS = {
     cost: 2500,
     color: '#9d00ff',
     secondaryColor: '#00f0ff',
+    bulletShape: 'slicer',
+    passiveId: 'voidrounds',
     stats: {
       speedMult: 1.1,
       damageMult: 1.35,
       shieldMult: 1.15,
       shardBonus: 1.5
     },
-    perkText: '+50% Shard Drops & High Crits'
+    perkText: 'Void Rounds (+50% Shards & Piercing Shot)'
   },
   dracula_plane: {
     id: 'dracula_plane',
@@ -68,6 +76,8 @@ export const SHIPS = {
     cost: 1500,
     color: '#ff0055',
     secondaryColor: '#ff2277',
+    bulletShape: 'fang',
+    passiveId: 'lifesteal',
     stats: {
       speedMult: 1.12,
       damageMult: 1.4,
@@ -83,13 +93,15 @@ export const SHIPS = {
     cost: 1800,
     color: '#ffe600',
     secondaryColor: '#00f0ff',
+    bulletShape: 'bat',
+    passiveId: 'batshield',
     stats: {
       speedMult: 1.18,
       damageMult: 1.35,
       shieldMult: 1.5,
       shardBonus: 1.3
     },
-    perkText: 'Stealth Batwing (+50% Shield Matrix & Dual Auto-Darts)'
+    perkText: 'Stealth Batwing (+50% Shield & Recharge on Kill)'
   },
   halloween_reaper: {
     id: 'halloween_reaper',
@@ -98,13 +110,15 @@ export const SHIPS = {
     cost: 2200,
     color: '#39ff14',
     secondaryColor: '#9d00ff',
+    bulletShape: 'scythe',
+    passiveId: 'soulharvest',
     stats: {
       speedMult: 1.22,
       damageMult: 1.45,
       shieldMult: 1.15,
       shardBonus: 1.6
     },
-    perkText: 'Spectre Drive (+22% Speed & +60% Shard Jackpot)'
+    perkText: 'Spectre Drive (+60% Shards & Soul Siphon on Kill)'
   }
 };
 
@@ -394,9 +408,9 @@ export const SECONDARY_WEAPONS = {
     maxLevel: 5,
     getCost: (lvl) => Math.round(90 * Math.pow(lvl, 1.4)),
     getStats: (lvl) => ({
-      damage: 28 + (lvl - 1) * 12,
-      count: 4 + (lvl >= 3 ? 2 : 0) + (lvl >= 5 ? 2 : 0), // 4 -> 6 -> 8 missiles
-      cooldown: Math.max(1.8, 3.2 - (lvl - 1) * 0.32)
+      damage: 20 + (lvl - 1) * 12,
+      count: 3 + (lvl >= 3 ? 2 : 0) + (lvl >= 5 ? 3 : 0), // 3 -> 5 -> 8 missiles
+      cooldown: Math.max(1.9, 3.6 - (lvl - 1) * 0.34)
     })
   },
   railgun: {
