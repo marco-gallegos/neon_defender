@@ -91,6 +91,11 @@ class Game {
     const w = this.renderer.width;
     const h = this.renderer.height;
 
+    // Pick this run's stage soundtrack BEFORE spawning waves — the
+    // WaveManager may swap to the boss theme during construction.
+    this.stageTrack = this.pickStageTrack();
+    audio.playTrack(this.stageTrack);
+
     this.player = new Player(w, h, this.saveData);
     this.waveManager = new WaveManager(w, h, mode, sectorId);
 
@@ -102,10 +107,21 @@ class Game {
 
     this.state = 'PLAYING';
     this.ui.showScreen('hud');
+  }
 
-    if (this.saveData.settings.music) {
-      audio.startMusic();
+  // One stage theme per run: campaign = sector-matched, arena = random pick.
+  pickStageTrack() {
+    if (this.currentMode === 'ARENA') {
+      const pool = ['stage_jungle', 'stage_city', 'stage_castle', 'stage_foundry'];
+      return pool[Math.floor(Math.random() * pool.length)];
     }
+    const sectorThemes = {
+      1: 'stage_jungle', 2: 'stage_jungle',
+      3: 'stage_city', 4: 'stage_city', 5: 'stage_city',
+      6: 'stage_castle', 7: 'stage_castle', 10: 'stage_castle',
+      8: 'stage_foundry', 9: 'stage_foundry'
+    };
+    return sectorThemes[this.currentSectorId] || 'stage_jungle';
   }
 
   restartRun() {
@@ -127,7 +143,7 @@ class Game {
 
   quitToMenu() {
     this.state = 'MENU';
-    audio.stopMusic();
+    audio.playTrack('menu');
     this.ui.renderMenuPreview();
     this.ui.showScreen('menu');
   }
@@ -225,7 +241,7 @@ class Game {
     }
 
     Storage.save(this.saveData);
-    audio.stopMusic();
+    audio.playJingle('gameover');
 
     document.getElementById('gameover-reason').textContent = reason;
     this.ui.showGameOver(
@@ -280,7 +296,7 @@ class Game {
     }
 
     Storage.save(this.saveData);
-    audio.stopMusic();
+    audio.playJingle('victory');
     this.ui.showVictory(sec, totalEarned, stars, safeRunCrystals);
   }
 
@@ -386,6 +402,9 @@ class Game {
         this.rollEnemyDrops(boss, true);
         this.runKills += 1;
         this.runScore += 2500;
+        // Boss down — drop back into the stage theme
+        // (campaign plays the victory jingle moments later anyway)
+        audio.playTrack(this.stageTrack);
       }
     }
 

@@ -435,10 +435,13 @@ h1, h2, h3 {
 }
 
 .hud-top {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: flex-start;
   width: 100%;
+  /* Reserve room for the pinned corner control (pause) */
+  padding-right: 52px;
 }
 
 .hud-left {
@@ -506,6 +509,10 @@ h1, h2, h3 {
 }
 
 .hud-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
   text-align: center;
 }
 
@@ -523,11 +530,71 @@ h1, h2, h3 {
   opacity: 0.85;
 }
 
-.hud-right {
+/* Pinned top-right corner controls — own layer, so HUD content
+   (bars, badges, currency pills) can never push pause off-screen */
+.hud-corner {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 10px) + 4px);
+  right: 12px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  z-index: 40;
   pointer-events: auto;
+}
+
+.icon-btn.pause-btn {
+  width: 44px; /* comfortable touch target on phones */
+  height: 44px;
+  font-size: 1.3rem;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+}
+
+.icon-btn.currency-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+
+.icon-btn.currency-btn.active {
+  background: rgba(255, 230, 0, 0.15);
+  border-color: var(--neon-yellow);
+  color: var(--neon-yellow);
+}
+
+.currency-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: flex-start; /* hug the pills instead of stretching */
+  gap: 6px;
+  background: rgba(8, 12, 28, 0.72);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 12px;
+  padding: 6px;
+}
+
+/* Brief pickup flash when counters are hidden (see UI.flashHudCurrency) */
+@keyframes currencyFlash {
+  0% { opacity: 0; transform: translateY(-6px) scale(0.9); }
+  15% { opacity: 1; transform: translateY(0) scale(1.04); }
+  25% { transform: scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+.currency-group.flash {
+  animation: currencyFlash 1.4s ease forwards;
+}
+
+.pause-loot {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
 .icon-btn {
@@ -1458,5 +1525,25 @@ h1, h2, h3 {
   .button-row.three-up button {
     font-size: 0.68rem;
     letter-spacing: 0;
+  }
+}
+
+/* Phone-width HUD compaction (Edge 30 Pro ≈ 393px CSS wide):
+   shrink the bars so the left column clears the centered sector badge. */
+@media (max-width: 520px) {
+  .bar-container { font-size: 0.62rem; }
+  .bar-bg { width: 64px; }
+  .hud-badge { font-size: 0.78rem; }
+  .hud-sub { font-size: 0.7rem; }
+  .hud-top { padding-right: 50px; }
+  .hstat { font-size: 0.58rem; padding: 2px 5px; }
+  /* Centered badge would collide with the bars on narrow phones —
+     dock it beside the pause button instead (18px gap, no text length risk). */
+  .hud-center {
+    left: auto;
+    right: 62px;
+    top: 2px;
+    transform: none;
+    text-align: right;
   }
 }

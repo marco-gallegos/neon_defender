@@ -131,7 +131,11 @@ export class Boss {
       ? options.minionTypes
       : def.minions;
 
-    audio.playBossAlert();
+    // Spawn alert — muted when the manager is already playing the
+    // full "Warning: Incoming" sting (see Audio.playWarningSting)
+    if (!options.alertMuted) {
+      audio.playBossAlert();
+    }
   }
 
   get attackDamage() {

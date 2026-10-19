@@ -67,6 +67,8 @@ export class UIManager {
 
     if (screenKey === 'hud') {
       this.screens.hud.classList.remove('hidden');
+      this._lastHudLoot = undefined; // don't flash counters when a run starts
+      this.refreshHudCurrency();
     }
 
     this.refreshCurrencyDisplays();
@@ -267,12 +269,39 @@ export class UIManager {
       Storage.save(this.game.saveData);
     };
 
+    // HUD loot counter visibility (in-game ◆ button + settings row share one setting)
+    const currencyBtn = document.getElementById('btn-hud-currency');
+    const currencyToggle = document.getElementById('btn-toggle-hud-currency');
+    const toggleHudCurrency = () => {
+      audio.playClick();
+      this.game.saveData.settings.hudCurrency = !this.game.saveData.settings.hudCurrency;
+      Storage.save(this.game.saveData);
+      this.refreshHudCurrency();
+    };
+    if (currencyBtn) currencyBtn.onclick = toggleHudCurrency;
+    if (currencyToggle) currencyToggle.onclick = toggleHudCurrency;
+
+    // Re-hide the loot counters after a pickup flash
+    const currencyGroup = document.getElementById('hud-currency');
+    if (currencyGroup) {
+      currencyGroup.addEventListener('animationend', () => {
+        currencyGroup.classList.remove('flash');
+        if (this.game?.saveData?.settings?.hudCurrency !== true) {
+          currencyGroup.classList.add('hidden');
+        }
+      });
+    }
+
+    // Reflect saved toggle states in the settings screen
+    this.syncSettingsToggles();
+
     // Reset Data
     document.getElementById('btn-reset-data').onclick = () => {
       if (confirm('Reset all progress, upgrades, and unlocked ships?')) {
         this.game.saveData = Storage.reset();
         this.renderMenuPreview();
         this.refreshCurrencyDisplays();
+        this.syncSettingsToggles();
         alert('Save data reset successfully!');
       }
     };
@@ -292,6 +321,51 @@ export class UIManager {
       const el = document.getElementById(id);
       if (el) el.textContent = crystals.toLocaleString();
     });
+  }
+
+  // Sync the settings-screen toggle buttons with saved settings.
+  syncSettingsToggles() {
+    const sfx = this.game?.saveData?.settings?.sfx !== false;
+    const music = this.game?.saveData?.settings?.music !== false;
+    const sfxBtn = document.getElementById('btn-toggle-sfx');
+    const musicBtn = document.getElementById('btn-toggle-music');
+    if (sfxBtn) {
+      sfxBtn.classList.toggle('active', sfx);
+      sfxBtn.textContent = sfx ? 'ON' : 'OFF';
+    }
+    if (musicBtn) {
+      musicBtn.classList.toggle('active', music);
+      musicBtn.textContent = music ? 'ON' : 'OFF';
+    }
+    this.refreshHudCurrency();
+  }
+
+  // Apply the loot-counter visibility setting to the in-game HUD + settings row.
+  refreshHudCurrency() {
+    const enabled = this.game?.saveData?.settings?.hudCurrency === true;
+    const group = document.getElementById('hud-currency');
+    const btn = document.getElementById('btn-hud-currency');
+    const settingsBtn = document.getElementById('btn-toggle-hud-currency');
+    if (group) {
+      group.classList.remove('flash');
+      group.classList.toggle('hidden', !enabled);
+    }
+    if (btn) btn.classList.toggle('active', enabled);
+    if (settingsBtn) {
+      settingsBtn.classList.toggle('active', enabled);
+      settingsBtn.textContent = enabled ? 'ON' : 'OFF';
+    }
+  }
+
+  // Briefly flash the loot counters when they are hidden and loot is picked up.
+  flashHudCurrency() {
+    if (this.game?.saveData?.settings?.hudCurrency === true) return; // always visible anyway
+    const group = document.getElementById('hud-currency');
+    if (!group || !group.classList.contains('hidden')) return;
+    group.classList.remove('hidden');
+    group.classList.remove('flash');
+    void group.offsetWidth; // restart the animation
+    group.classList.add('flash');
   }
 
   renderMenuPreview() {
@@ -959,6 +1033,17 @@ export class UIManager {
       : 0;
     const hudCrystals = document.getElementById('hud-crystals');
     if (hudCrystals) hudCrystals.textContent = (crystalBank + crystalRun).toLocaleString();
+
+    // Loot pickup → briefly flash hidden counters; keep pause-screen totals fresh
+    const pauseShardsEl = document.getElementById('pause-shards');
+    if (pauseShardsEl) pauseShardsEl.textContent = total.toLocaleString();
+    const pauseCrystalsEl = document.getElementById('pause-crystals');
+    if (pauseCrystalsEl) pauseCrystalsEl.textContent = (crystalBank + crystalRun).toLocaleString();
+    const lootTotal = total + crystalBank + crystalRun;
+    if (this._lastHudLoot !== undefined && lootTotal !== this._lastHudLoot) {
+      this.flashHudCurrency();
+    }
+    this._lastHudLoot = lootTotal;
 
     // Compact live ship stats (Speed / Damage / Shield)
     const statsEl = document.getElementById('hud-ship-stats');

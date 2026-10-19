@@ -2,6 +2,7 @@
 import { Enemy } from '../entities/Enemy.js';
 import { Boss } from '../entities/Boss.js';
 import { SECTORS } from './UpgradeSystem.js';
+import { audio } from '../engine/Audio.js';
 
 export class WaveManager {
   constructor(canvasWidth, canvasHeight, mode = 'CAMPAIGN', sectorId = 1) {
@@ -48,10 +49,13 @@ export class WaveManager {
             type: this.sectorDef.bossType,
             threat: this.sectorDef.threat || Math.ceil(this.sectorId / 2),
             minionHpMult: this.sectorDef.minionHpMult,
-            minionDifficulty: this.getEnemyDifficulty()
+            minionDifficulty: this.getEnemyDifficulty(),
+            alertMuted: true
           }
         );
         this.bossSpawned = true;
+        audio.playTrack('boss');
+        audio.playWarningSting();
       } else {
         this.setBanner(`WAVE ${waveNum}/${this.maxWaves}`, 2.2);
         this.generateCampaignWave(waveNum);
@@ -88,10 +92,13 @@ export class WaveManager {
             type: bossType,
             threat: Math.min(10, Math.ceil(waveNum / 5)),
             minionHpMult: 1 + waveNum * 0.12,
-            minionDifficulty: this.getEnemyDifficulty()
+            minionDifficulty: this.getEnemyDifficulty(),
+            alertMuted: true
           }
         );
         this.bossSpawned = true;
+        audio.playTrack('boss');
+        audio.playWarningSting();
       } else {
         this.setBanner(`ARENA WAVE ${waveNum}`, 2.0);
         this.generateArenaWave(waveNum);

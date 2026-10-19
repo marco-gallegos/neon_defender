@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-BgXnYoSr.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CT1L1Nnd.css">
+  <script type="module" crossorigin src="/assets/index-BbYdf9_o.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-LjLiuhN8.css">
 </head>
 <body>
   <div id="game-container">
@@ -36,24 +36,30 @@
             <div id="hud-ship-stats" class="hud-ship-stats">
               <!-- Populated by JS: SPD / DMG / SHD -->
             </div>
+            <!-- Loot counters: hidden by default, flash on pickup (toggle + settings row) -->
+            <button id="btn-hud-currency" class="icon-btn currency-btn" aria-label="Toggle loot counters">◆</button>
+            <div id="hud-currency" class="currency-group hidden">
+              <div class="currency-pill small">
+                <span class="shard-icon">◆</span>
+                <span id="hud-shards">0</span>
+              </div>
+              <div class="currency-pill small crystal-pill" title="Nano Crystals">
+                <span class="crystal-icon">◆◆</span>
+                <span id="hud-crystals">0</span>
+              </div>
+            </div>
           </div>
           
           <div class="hud-center">
             <div id="hud-mode-title" class="hud-badge">SECTOR 1</div>
             <div id="hud-wave-text" class="hud-sub">WAVE 1/10</div>
           </div>
+        </div>
 
-          <div class="hud-right">
-            <div class="currency-pill">
-              <span class="shard-icon">◆</span>
-              <span id="hud-shards">0</span>
-            </div>
-            <div class="currency-pill crystal-pill" title="Nano Crystals">
-              <span class="crystal-icon">◆◆</span>
-              <span id="hud-crystals">0</span>
-            </div>
-            <button id="btn-pause" class="icon-btn" aria-label="Pause">⏸</button>
-          </div>
+        <!-- Pinned corner control — own layer so HUD content can never
+             push the pause button off-screen on narrow phones -->
+        <div class="hud-corner">
+          <button id="btn-pause" class="icon-btn pause-btn" aria-label="Pause">⏸</button>
         </div>
 
         <!-- Boss Health Bar -->
@@ -283,6 +289,19 @@
           </div>
 
           <div class="settings-group">
+            <h3>HUD DISPLAY</h3>
+            <div class="setting-row">
+              <span>Show Shards &amp; Crystals in Combat</span>
+              <button id="btn-toggle-hud-currency" class="toggle-btn">OFF</button>
+            </div>
+            <p class="guide-text">
+              When OFF, loot counters stay hidden while you fight — they flash briefly
+              whenever you pick up shards or crystals. Totals are always visible on the
+              pause screen.
+            </p>
+          </div>
+
+          <div class="settings-group">
             <h3>TOUCH CONTROLS</h3>
             <p class="guide-text">
               • <b>Mobile</b>: Drag your finger anywhere to glide your ship! Auto-fire is always on.<br>
@@ -310,6 +329,16 @@
       <div id="screen-pause" class="ui-screen modal-screen hidden">
         <div class="modal-box">
           <h2>SYSTEM PAUSED</h2>
+          <div class="pause-loot">
+            <div class="currency-pill small">
+              <span class="shard-icon">◆</span>
+              <span id="pause-shards">0</span>
+            </div>
+            <div class="currency-pill small crystal-pill">
+              <span class="crystal-icon">◆◆</span>
+              <span id="pause-crystals">0</span>
+            </div>
+          </div>
           <div class="pause-actions">
             <button id="btn-resume" class="neon-btn primary-btn">▶ RESUME</button>
             <button id="btn-pause-restart" class="neon-btn secondary-btn">🔄 RESTART</button>

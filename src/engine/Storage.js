@@ -53,7 +53,8 @@ const DEFAULT_DATA = {
   },
   settings: {
     sfx: true,
-    music: true
+    music: true,
+    hudCurrency: false // Loot counters hidden in combat by default (flash on pickup)
   }
 };
 
@@ -198,7 +199,8 @@ export class Storage {
         sectors: safeSectors,
         settings: {
           sfx: parsed?.settings?.sfx !== false,
-          music: parsed?.settings?.music !== false
+          music: parsed?.settings?.music !== false,
+          hudCurrency: parsed?.settings?.hudCurrency === true
         }
       };
     } catch (e) {

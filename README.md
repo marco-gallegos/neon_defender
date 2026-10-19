@@ -9,6 +9,8 @@ A high-octane, neon vector shoot 'em up game optimized for **cellphones (touch c
 - **📱 Tailored for Cellphones (Touch Controls)**:
   - **Finger Offset Tracking**: Your starship glides ~45px *above* your finger tip, so your own thumb/finger never blocks your view of incoming hazards or bullets.
   - **Responsive Mobile Viewport**: Smooth scaling across 16:9, 18:9, 19.5:9, 20:9 phone ratios with safe-area notch padding.
+  - **Always-Reachable Pause**: The pause button is pinned in its own top-right layer (44px tap target) so HUD content can never push it off-screen on tall phones.
+  - **Clutter-Free Loot HUD**: Shard & crystal counters are hidden during combat by default — they flash briefly when you pick something up, and can be pinned on with the ◆ button or *Options → HUD Display*. Totals are always shown on the pause screen.
   - **Touch & Drag**: Auto-firing during touch glide, with a prominent dedicated **EMP Bomb** button designed for quick thumb triggers.
   - Desktop fallback with Mouse drag, WASD / Arrow keys, and Spacebar.
 
@@ -16,7 +18,7 @@ A high-octane, neon vector shoot 'em up game optimized for **cellphones (touch c
   - Glowing neon shapes (Pulsing triangles, 8-tooth buzzsaws, razor rhombuses, laser octagons).
   - Background scrolling Cyber Grid with rhythmic beat pulses and twinkling parallax starfield.
   - Debris bursts, shockwave rings, floating arcade damage counters, and chromatic impact shakes.
-  - Built-in procedural Web Audio chiptune synth with 130 BPM Geometry Dash style bassline and punchy SFX (laser, bass drops, shield deflections, powerup fanfares). Zero audio asset loading lag!
+  - Built-in procedural Web Audio chiptune synth with a **9-track original soundtrack** in the style of the classics: Metal Slug boss marches, Contra jungle runs, Castlevania gallops, Streets of Rage grooves, Mega Man industrial energy and a Sonic-style menu theme — with dynamic switches (stage theme per sector, Gradius-style warning sting + march on boss spawn, victory fanfare, game-over dirge) plus punchy SFX (laser, bass drops, shield deflections, powerup fanfares). Zero audio asset loading lag! See [MUSIC.md](MUSIC.md) for the engine guide and track list.
 
 - **💰 Zero Pay-To-Win: Endless Arena Farming Mode**:
   - Want more upgrades and ships? Jump straight into the **Endless Arena Mode**!
