@@ -7,7 +7,7 @@ import { UIManager } from './ui/UI.js';
 import { Player } from './entities/Player.js';
 import { WaveManager } from './systems/WaveManager.js';
 import { FloatingText, Particle } from './entities/Particle.js';
-import { SECTORS } from './systems/UpgradeSystem.js';
+import { SECTORS, SECTOR_TRACKS, STAGE_TRACKS, ARENA_CHECKPOINT_INTERVAL, ARENA_MUSIC_INTERVAL } from './systems/UpgradeSystem.js';
 import { EquipmentItem, CrystalItem } from './entities/EquipmentDrop.js';
 import { rollEquipmentDrop, rollCrystalDrop } from './systems/Equipment.js';
 
@@ -74,13 +74,15 @@ class Game {
     }
   }
 
-  startRun(mode = 'CAMPAIGN', sectorId = 1) {
+  startRun(mode = 'CAMPAIGN', sectorId = 1, startWave = 1) {
     this.currentMode = mode;
     this.currentSectorId = sectorId;
     this.runShards = 0;
     this.runCrystals = 0;
     this.runKills = 0;
     this.runScore = 0;
+    // Reset arena music rotation so the first swap lands on the next boundary.
+    this._lastArenaMusicWave = 0;
 
     this.bullets = [];
     this.enemies = [];
@@ -97,7 +99,7 @@ class Game {
     audio.playTrack(this.stageTrack);
 
     this.player = new Player(w, h, this.saveData);
-    this.waveManager = new WaveManager(w, h, mode, sectorId);
+    this.waveManager = new WaveManager(w, h, mode, sectorId, startWave);
 
     this.timeScale = 1.0;
     if (this.ui?.bossBarWrap) {
@@ -109,19 +111,38 @@ class Game {
     this.ui.showScreen('hud');
   }
 
-  // One stage theme per run: campaign = sector-matched, arena = random pick.
+  // One stage theme per run: campaign = sector-matched, arena = random pick
+  // from the themes the player has unlocked by clearing campaign sectors.
   pickStageTrack() {
     if (this.currentMode === 'ARENA') {
-      const pool = ['stage_jungle', 'stage_city', 'stage_castle', 'stage_foundry'];
-      return pool[Math.floor(Math.random() * pool.length)];
+      return this.pickArenaTrack();
     }
-    const sectorThemes = {
-      1: 'stage_jungle', 2: 'stage_jungle',
-      3: 'stage_city', 4: 'stage_city', 5: 'stage_city',
-      6: 'stage_castle', 7: 'stage_castle', 10: 'stage_castle',
-      8: 'stage_foundry', 9: 'stage_foundry'
-    };
-    return sectorThemes[this.currentSectorId] || 'stage_jungle';
+    return SECTOR_TRACKS[this.currentSectorId] || 'stage_jungle';
+  }
+
+  // Random stage theme from the unlocked pool (falls back to the default).
+  pickArenaTrack() {
+    const unlocked = Array.isArray(this.saveData.unlockedTracks) && this.saveData.unlockedTracks.length > 0
+      ? this.saveData.unlockedTracks.filter(t => STAGE_TRACKS.includes(t))
+      : [];
+    const pool = unlocked.length > 0 ? unlocked : STAGE_TRACKS.slice(0, 1);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // Swap the arena soundtrack every ARENA_MUSIC_INTERVAL waves (never mid-boss).
+  maybeRotateArenaMusic() {
+    if (this.currentMode !== 'ARENA' || !this.waveManager) return;
+    const wave = Number.isFinite(this.waveManager.currentWave) ? this.waveManager.currentWave : 1;
+    if (wave % ARENA_MUSIC_INTERVAL !== 0) return;
+    if (this._lastArenaMusicWave === wave) return;
+    this._lastArenaMusicWave = wave;
+    // Let the boss theme own boss waves; rotation resumes on the next regular wave.
+    if (this.waveManager.bossSpawned) return;
+    const next = this.pickArenaTrack();
+    if (next !== this.stageTrack) {
+      this.stageTrack = next;
+      audio.playTrack(next);
+    }
   }
 
   restartRun() {
@@ -238,6 +259,12 @@ class Game {
       }
       this.saveData.arenaStats.bestScore = Math.max(this.saveData.arenaStats.bestScore, Number(this.runScore) || 0);
       this.saveData.arenaStats.totalShardsEarned = (Number(this.saveData.arenaStats.totalShardsEarned) || 0) + safeRunShards;
+
+      // Unlock the highest checkpoint wave the player has cleared.
+      const clearedCheckpoint = Math.floor(currentWave / ARENA_CHECKPOINT_INTERVAL) * ARENA_CHECKPOINT_INTERVAL;
+      if (clearedCheckpoint > (Number(this.saveData.arenaStats.checkpoint) || 0)) {
+        this.saveData.arenaStats.checkpoint = clearedCheckpoint;
+      }
     }
 
     Storage.save(this.saveData);
@@ -285,6 +312,17 @@ class Game {
       this.saveData.sectors[nextSectorId].unlocked = true;
     }
 
+    // Clearing a sector unlocks its stage theme for Endless Arena.
+    const clearedTrack = SECTOR_TRACKS[this.currentSectorId];
+    let trackUnlocked = false;
+    if (clearedTrack) {
+      if (!Array.isArray(this.saveData.unlockedTracks)) this.saveData.unlockedTracks = [];
+      if (!this.saveData.unlockedTracks.includes(clearedTrack)) {
+        this.saveData.unlockedTracks.push(clearedTrack);
+        trackUnlocked = true;
+      }
+    }
+
     // Star rating (1: clear, 2: >50% HP, 3: >80% HP)
     const hpRatio = this.player.hp / this.player.maxHp;
     const stars = hpRatio > 0.8 ? 3 : (hpRatio > 0.4 ? 2 : 1);
@@ -297,7 +335,7 @@ class Game {
 
     Storage.save(this.saveData);
     audio.playJingle('victory');
-    this.ui.showVictory(sec, totalEarned, stars, safeRunCrystals);
+    this.ui.showVictory(sec, totalEarned, stars, safeRunCrystals, trackUnlocked ? clearedTrack : null);
   }
 
   loop(currentTime) {
@@ -389,6 +427,9 @@ class Game {
       this.handleVictory();
       return;
     }
+
+    // Endless Arena: shuffle the soundtrack every few waves.
+    this.maybeRotateArenaMusic();
 
     // Update Boss if present
     if (this.waveManager.boss) {

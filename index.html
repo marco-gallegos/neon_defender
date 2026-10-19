@@ -179,6 +179,24 @@
         </div>
       </div>
 
+      <!-- Arena Checkpoint Selector -->
+      <div id="screen-arena" class="ui-screen hidden">
+        <div class="screen-header">
+          <button id="btn-arena-back" class="neon-btn mini-btn">◀ BACK</button>
+          <h2>ENDLESS ARENA</h2>
+          <div class="currency-pill small">
+            <span class="shard-icon">◆</span>
+            <span id="arena-shards">0</span>
+          </div>
+        </div>
+        <div class="shop-tip">
+          💡 Checkpoints unlock every <b>5 waves</b>. Resuming starts you at that wave — no early-wave farming, but no early-wave grind either.
+        </div>
+        <div class="sectors-grid" id="arena-checkpoints-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
       <!-- Shop / Workshop Screen -->
       <div id="screen-shop" class="ui-screen hidden">
         <div class="screen-header">
@@ -373,10 +391,15 @@
               <span>Crystals Harvested:</span>
               <span id="stat-crystals" class="stat-val">+0 ◆◆</span>
             </div>
+            <div class="stat-row checkpoint-row hidden" id="gameover-checkpoint-row">
+              <span>Checkpoint:</span>
+              <span id="stat-checkpoint" class="stat-val">WAVE 20 UNLOCKED</span>
+            </div>
           </div>
 
           <div class="gameover-actions">
             <button id="btn-retry" class="neon-btn primary-btn">⚡ PLAY AGAIN</button>
+            <button id="btn-retry-checkpoint" class="neon-btn secondary-btn hidden">⏩ RESUME CHECKPOINT</button>
             <button id="btn-gameover-shop" class="neon-btn secondary-btn">⚡ UPGRADE SHIP</button>
             <button id="btn-gameover-menu" class="neon-btn mini-btn">MAIN MENU</button>
           </div>
@@ -411,6 +434,10 @@
             <div class="stat-row">
               <span>Crystals Collected:</span>
               <span id="vic-crystals" class="stat-val">+0 ◆◆</span>
+            </div>
+            <div class="stat-row highlight hidden" id="vic-track-row">
+              <span>New Arena Track:</span>
+              <span id="vic-track" class="stat-val">🎵 JUNGLE HOT DROP</span>
             </div>
           </div>
 

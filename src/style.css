@@ -1490,6 +1490,20 @@ h1, h2, h3 {
   font-size: 1.1rem;
 }
 
+/* Arena checkpoint / new-track announcements */
+.stat-row.checkpoint-row {
+  border-top: 1px dashed rgba(57, 255, 20, 0.35);
+  padding-top: 8px;
+  margin-top: 4px;
+  color: var(--neon-lime);
+  font-weight: 700;
+}
+
+.stat-row.checkpoint-row .stat-val {
+  color: var(--neon-lime);
+  font-size: 1rem;
+}
+
 .stars-row {
   display: flex;
   justify-content: center;

@@ -1,8 +1,8 @@
 // UI Screen Management, Shop Rendering, Hangar, and HUD Updates
-import { UPGRADES, SHIPS, SECTORS, SECONDARY_WEAPONS, PRIMARY_WEAPONS } from '../systems/UpgradeSystem.js';
+import { UPGRADES, SHIPS, SECTORS, SECONDARY_WEAPONS, PRIMARY_WEAPONS, ARENA_CHECKPOINT_INTERVAL } from '../systems/UpgradeSystem.js';
 import { CATEGORIES, EQUIP_SLOTS, TIER_META, formatEffect, disassembleValue, tierUpRequirement, findMergePartner, applyTierUp, fuseSSItems, S_FUSION_COST } from '../systems/Equipment.js';
 import { Renderer } from '../engine/Renderer.js';
-import { audio } from '../engine/Audio.js';
+import { audio, TRACK_NAMES } from '../engine/Audio.js';
 import { Storage } from '../engine/Storage.js';
 
 export class UIManager {
@@ -13,6 +13,7 @@ export class UIManager {
     this.screens = {
       menu: document.getElementById('screen-main-menu'),
       campaign: document.getElementById('screen-campaign'),
+      arena: document.getElementById('screen-arena'),
       shop: document.getElementById('screen-shop'),
       hangar: document.getElementById('screen-hangar'),
       arsenal: document.getElementById('screen-arsenal'),
@@ -84,7 +85,8 @@ export class UIManager {
 
     document.getElementById('btn-play-arena').onclick = () => {
       audio.playClick();
-      this.game.startRun('ARENA');
+      this.renderArenaCheckpoints();
+      this.showScreen('arena');
     };
 
     document.getElementById('btn-open-shop').onclick = () => {
@@ -114,6 +116,12 @@ export class UIManager {
 
     // Back buttons
     document.getElementById('btn-campaign-back').onclick = () => {
+      audio.playClick();
+      this.renderMenuPreview();
+      this.showScreen('menu');
+    };
+
+    document.getElementById('btn-arena-back').onclick = () => {
       audio.playClick();
       this.renderMenuPreview();
       this.showScreen('menu');
@@ -211,6 +219,20 @@ export class UIManager {
       audio.playClick();
       this.game.restartRun();
     };
+
+    // Arena checkpoint resume (only visible when a checkpoint is unlocked)
+    const cpResumeBtn = document.getElementById('btn-retry-checkpoint');
+    if (cpResumeBtn) {
+      cpResumeBtn.onclick = () => {
+        audio.playClick();
+        const wave = Number(this.checkpointResumeWave) || 0;
+        if (wave >= ARENA_CHECKPOINT_INTERVAL) {
+          this.game.startRun('ARENA', 1, wave);
+        } else {
+          this.game.startRun('ARENA');
+        }
+      };
+    }
 
     document.getElementById('btn-gameover-shop').onclick = () => {
       audio.playClick();
@@ -455,6 +477,65 @@ export class UIManager {
 
       container.appendChild(card);
     });
+  }
+
+  // Render Arena checkpoint selector — resume from a cleared wave multiple.
+  renderArenaCheckpoints() {
+    this.refreshCurrencyDisplays();
+    const container = document.getElementById('arena-checkpoints-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const saved = Number(this.game.saveData.arenaStats?.checkpoint) || 0;
+    const unlockedWave = Math.floor(saved / ARENA_CHECKPOINT_INTERVAL) * ARENA_CHECKPOINT_INTERVAL;
+    const bestWave = Number(this.game.saveData.arenaStats?.bestWave) || 0;
+
+    // Wave 1 is always available; then every checkpoint up to the unlocked one.
+    // Offer a peek at the next checkpoint so players see there's something to chase.
+    const nextCheckpoint = unlockedWave + ARENA_CHECKPOINT_INTERVAL;
+
+    const makeCard = (wave, unlocked, label, sub) => {
+      const card = document.createElement('div');
+      card.className = `sector-card ${unlocked ? 'unlocked' : 'locked'}`;
+
+      const bossWave = wave % 5 === 0; // arena bosses land on multiples of 5
+      card.innerHTML = `
+        <div class="sector-info">
+          <h3>${label}</h3>
+          <p>${sub}</p>
+          <div class="sector-threat-row">
+            ${wave > 1 ? `THREAT ${'☠'.repeat(Math.max(1, Math.min(5, Math.ceil(wave / 10))))}` : 'STARTING LINE'}
+            ${bossWave && wave > 1 ? ' • <span style="color:var(--neon-magenta)">BOSS WAVE</span>' : ''}
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div class="sector-stars">${unlocked ? '▶ PLAY' : '🔒 LOCKED'}</div>
+          ${wave === bestWave && bestWave > 0 ? `<div style="font-size:0.75rem;color:var(--neon-cyan);margin-top:4px;">BEST ${bestWave}</div>` : ''}
+        </div>
+      `;
+
+      if (unlocked && wave === unlockedWave && wave > 1) {
+        card.style.borderColor = 'var(--neon-lime)';
+        card.style.boxShadow = 'inset 0 0 18px rgba(57, 255, 20, 0.18)';
+      }
+
+      if (unlocked) {
+        card.onclick = () => {
+          audio.playClick();
+          this.game.startRun('ARENA', 1, wave);
+        };
+      }
+      container.appendChild(card);
+    };
+
+    makeCard(1, true, 'WAVE 1', 'Fresh run from the beginning.');
+
+    for (let w = ARENA_CHECKPOINT_INTERVAL; w <= unlockedWave; w += ARENA_CHECKPOINT_INTERVAL) {
+      makeCard(w, true, `WAVE ${w}`, `Resume from checkpoint ${w / ARENA_CHECKPOINT_INTERVAL}.`);
+    }
+
+    // Locked preview of the next checkpoint
+    makeCard(nextCheckpoint, false, `WAVE ${nextCheckpoint}`, `Reach wave ${nextCheckpoint} to unlock.`);
   }
 
   // Render Workshop Upgrades
@@ -1210,12 +1291,32 @@ export class UIManager {
     document.getElementById('stat-shards').textContent = `+${safeShards.toLocaleString()} ◆`;
     const crystalEl = document.getElementById('stat-crystals');
     if (crystalEl) crystalEl.textContent = `+${safeCrystals.toLocaleString()} ◆◆`;
+
+    // Arena checkpoint: show the resume option when a checkpoint exists.
+    const cpRow = document.getElementById('gameover-checkpoint-row');
+    const cpVal = document.getElementById('stat-checkpoint');
+    const cpBtn = document.getElementById('btn-retry-checkpoint');
+    const isArena = mode === 'ENDLESS ARENA';
+    const checkpoint = isArena
+      ? Math.floor((Number(this.game.saveData.arenaStats?.checkpoint) || 0) / ARENA_CHECKPOINT_INTERVAL) * ARENA_CHECKPOINT_INTERVAL
+      : 0;
+    // Only offer the resume shortcut if it actually skips waves.
+    const canResume = isArena && checkpoint >= ARENA_CHECKPOINT_INTERVAL;
+    this.checkpointResumeWave = canResume ? checkpoint : 0;
+
+    if (cpRow) cpRow.classList.toggle('hidden', !canResume);
+    if (cpVal && canResume) cpVal.textContent = `WAVE ${checkpoint} UNLOCKED`;
+    if (cpBtn) {
+      cpBtn.classList.toggle('hidden', !canResume);
+      if (canResume) cpBtn.textContent = `⏩ RESUME WAVE ${checkpoint}`;
+    }
+
     this.refreshCurrencyDisplays();
     this.showScreen('gameover');
   }
 
   // Show Victory Modal
-  showVictory(sectorDef, totalShardsEarned, stars, crystalsEarned = 0) {
+  showVictory(sectorDef, totalShardsEarned, stars, crystalsEarned = 0, unlockedTrack = null) {
     const safeBonus = (typeof sectorDef?.rewardShards === 'number' && Number.isFinite(sectorDef.rewardShards))
       ? Math.max(0, Math.round(sectorDef.rewardShards))
       : 0;
@@ -1246,6 +1347,13 @@ export class UIManager {
     document.getElementById('vic-total-shards').textContent = `+${safeTotal.toLocaleString()} ◆`;
     const vicCrystals = document.getElementById('vic-crystals');
     if (vicCrystals) vicCrystals.textContent = `+${safeCrystals.toLocaleString()} ◆◆`;
+
+    // Announce a newly unlocked Endless Arena soundtrack.
+    const trackRow = document.getElementById('vic-track-row');
+    const trackEl = document.getElementById('vic-track');
+    const trackName = unlockedTrack ? (TRACK_NAMES[unlockedTrack] || unlockedTrack) : null;
+    if (trackRow) trackRow.classList.toggle('hidden', !trackName);
+    if (trackEl && trackName) trackEl.textContent = `🎵 ${trackName}`;
 
     const starsContainer = document.getElementById('victory-stars');
     starsContainer.innerHTML = '';

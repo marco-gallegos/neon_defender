@@ -269,6 +269,16 @@ export const TRACKS = {
   }
 };
 
+// Display names for the looping tracks (used by the unlock UI).
+export const TRACK_NAMES = {
+  menu: 'CHROME RACER',
+  stage_jungle: 'JUNGLE HOT DROP',
+  stage_city: 'NEON CITY PATROL',
+  stage_castle: 'MIDNIGHT CASTLE',
+  stage_foundry: 'TITAN FOUNDRY',
+  boss: 'BRASS & GUNPOWDER'
+};
+
 // One-shot musical sequences (stings & jingles)
 export const SEQUENCES = {
   // "Warning: Incoming" — Gradius-style alarm siren + rising chromatic run (~2.6s)

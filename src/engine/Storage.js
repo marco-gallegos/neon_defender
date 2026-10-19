@@ -16,6 +16,8 @@ const DEFAULT_DATA = {
   },
   equippedPrimary: 'plasma',
   unlockedPrimaries: ['plasma', 'laser', 'spread', 'wave'],
+  // Endless Arena soundtracks unlocked by clearing campaign sectors.
+  unlockedTracks: ['stage_jungle'],
   equippedSecondary: 'seeker',
   unlockedSecondaries: ['seeker'],
   secondaryUpgrades: {
@@ -49,7 +51,8 @@ const DEFAULT_DATA = {
   arenaStats: {
     bestWave: 0,
     bestScore: 0,
-    totalShardsEarned: 0
+    totalShardsEarned: 0,
+    checkpoint: 0 // Highest arena checkpoint wave unlocked (multiple of ARENA_CHECKPOINT_INTERVAL)
   },
   settings: {
     sfx: true,
@@ -92,7 +95,8 @@ export class Storage {
       const safeArenaStats = {
         bestWave: sanitizeNumber(parsed?.arenaStats?.bestWave, 0, 0),
         bestScore: sanitizeNumber(parsed?.arenaStats?.bestScore, 0, 0),
-        totalShardsEarned: sanitizeNumber(parsed?.arenaStats?.totalShardsEarned, 0, 0)
+        totalShardsEarned: sanitizeNumber(parsed?.arenaStats?.totalShardsEarned, 0, 0),
+        checkpoint: sanitizeNumber(parsed?.arenaStats?.checkpoint, 0, 0)
       };
 
       const safeSectors = {};
@@ -143,6 +147,12 @@ export class Storage {
         ? parsed.equippedPrimary
         : 'plasma';
 
+      // Endless Arena soundtrack unlocks (always at least the starter theme).
+      const safeUnlockedTracks = Array.isArray(parsed?.unlockedTracks) && parsed.unlockedTracks.length > 0
+        ? [...new Set(parsed.unlockedTracks.filter(t => typeof t === 'string'))]
+        : [...DEFAULT_DATA.unlockedTracks];
+      if (safeUnlockedTracks.length === 0) safeUnlockedTracks.push(...DEFAULT_DATA.unlockedTracks);
+
       // --- Equipment system ---
       const safeCrystals = sanitizeNumber(parsed?.crystals, 0, 0);
 
@@ -191,6 +201,7 @@ export class Storage {
         unlockedShips: safeUnlockedShips,
         equippedPrimary: safeEquippedPrimary,
         unlockedPrimaries: safeUnlockedPrimaries,
+        unlockedTracks: safeUnlockedTracks,
         upgrades: safeUpgrades,
         equippedSecondary: safeEquippedSecondary,
         unlockedSecondaries: safeUnlockedSecondaries,

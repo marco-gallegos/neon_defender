@@ -120,6 +120,22 @@ Archetypes: `guardian`, `prism`, `hex`, `octagon`, `chronos`, `devil`, `leviatha
 - Endless Arena remains the farming mode, now also the crystal farm.
 - Stars, sector clear bonuses, and arena best-wave/score are persisted.
 
+## 8b. Endless Arena checkpoints & soundtracks (working tree)
+- **Checkpoints:** every `ARENA_CHECKPOINT_INTERVAL = 5` waves cleared unlocks a resume point
+  (`arenaStats.checkpoint`, highest cleared multiple of 5). On game over, `handleGameOver`
+  computes `floor(wave / 5) * 5` and raises the stored checkpoint if higher.
+- **Resume:** the main menu's **ENDLESS ARENA** button opens `screen-arena`
+  (`renderArenaCheckpoints()`), listing **WAVE 1** plus every unlocked multiple of 5, and a locked
+  preview of the next one. Selecting one calls `startRun('ARENA', 1, wave)`, which flows into
+  `WaveManager(..., startWave)` and spawns that wave directly (boss waves included).
+- **Soundtracks:** each campaign sector maps to a stage theme via `SECTOR_TRACKS`. Clearing a
+  sector unlocks its theme into `saveData.unlockedTracks` (announced on the victory screen).
+- **Arena music rotation:** arena runs start on a random theme from the **unlocked** pool
+  (`pickArenaTrack()`) and re-roll every `ARENA_MUSIC_INTERVAL = 5` waves
+  (`maybeRotateArenaMusic()`); rotation defers while a boss owns the track.
+- Starts with **only `stage_jungle`** unlocked; clearing sectors 3/6/8/10 progressively unlocks
+  the rest.
+
 ## 9. Equipment & crystals (working tree — Phases 1–3)
 Implemented in `src/systems/Equipment.js` (+ `src/entities/EquipmentDrop.js`, `UI.js`, `Storage.js`).
 - **Tiers:** `C → B → A → S`, plus **`S+`** — obtainable **only** by fusing two S items
@@ -130,8 +146,9 @@ Implemented in `src/systems/Equipment.js` (+ `src/entities/EquipmentDrop.js`, `U
   Tier weights ramp with `getDropProgress()`; bosses skew high.
 - **Aggregation:** `computeBonuses(equipped, inventory)` is the single entry point; caps applied.
 - **Economy:** `disassembleValue` → crystals (C1/B4/A12/S30/S+90); `tierUpRequirement`
-  (C→B→A→S with shards + crystals + duplicates); `fuseSSItems` → **S+** with the union of
-  both effect sets ×1.25; `generateStoreStock` (premium, very expensive).
+  (C→B→A→S with **shards + crystals only, no duplicates**); `fuseSSItems` merges **S/S+ + S/S+**
+  → **S+** keeping **every effect from both inputs** (same-stat effects stack, then ×1.25);
+  `generateStoreStock` (premium, very expensive).
 - **Arsenal UI (Phase 3):** `screen-arsenal` in `index.html`; `renderArsenal()` in `UI.js`
   renders equipped slots + per-category inventory, with **equip/unequip** and **disassemble → crystals**.
   Reachable from the main menu (`btn-open-arsenal`).
@@ -161,7 +178,8 @@ This is a core, intentionally strong mechanic.
 ## 13. Persistence (`Storage`)
 `neon_defender_savedata_v1` — deep-sanitised on load (numbers clamped, unknown fields
 ignored). Persisted: **shards, crystals, inventory, equippedEquipment**, equipped/unlocked
-ships, primaries/secondaries + secondary levels, upgrades, sectors, arena stats, audio settings.
+ships, primaries/secondaries + secondary levels, upgrades, sectors, unlocked arena tracks,
+arena stats (incl. `checkpoint`), audio settings.
 Default starting shards = **0**.
 
 ## 14. Controls

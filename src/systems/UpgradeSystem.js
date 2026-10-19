@@ -206,6 +206,27 @@ export const UPGRADES = {
   }
 };
 
+// Endless Arena checkpoints: every N waves the player unlocks a resume point.
+export const ARENA_CHECKPOINT_INTERVAL = 5;
+
+// Endless Arena swaps its soundtrack on the same cadence as checkpoints.
+export const ARENA_MUSIC_INTERVAL = 5;
+
+// Which stage theme belongs to each campaign sector. Used both for the sector's
+// own soundtrack and to unlock the theme for Endless Arena once it's cleared.
+export const SECTOR_TRACKS = {
+  1: 'stage_jungle', 2: 'stage_jungle',
+  3: 'stage_city', 4: 'stage_city', 5: 'stage_city',
+  6: 'stage_castle', 7: 'stage_castle', 10: 'stage_castle',
+  8: 'stage_foundry', 9: 'stage_foundry'
+};
+
+// Every stage theme that Endless Arena can shuffle through.
+export const STAGE_TRACKS = ['stage_jungle', 'stage_city', 'stage_castle', 'stage_foundry'];
+
+// The theme the player starts the game with (sector 1 is always unlocked).
+export const DEFAULT_UNLOCKED_TRACKS = ['stage_jungle'];
+
 export const SECTORS = [
   {
     id: 1,

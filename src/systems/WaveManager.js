@@ -5,14 +5,16 @@ import { SECTORS } from './UpgradeSystem.js';
 import { audio } from '../engine/Audio.js';
 
 export class WaveManager {
-  constructor(canvasWidth, canvasHeight, mode = 'CAMPAIGN', sectorId = 1) {
+  constructor(canvasWidth, canvasHeight, mode = 'CAMPAIGN', sectorId = 1, startWave = 1) {
     this.canvasWidth = canvasWidth;
     this.canvasHeight = canvasHeight;
     this.mode = mode; // 'CAMPAIGN' or 'ARENA'
     this.sectorId = sectorId;
     this.sectorDef = SECTORS.find(s => s.id === sectorId) || SECTORS[0];
 
-    this.currentWave = 1;
+    // Arena checkpoints: resume runs at a fixed wave boundary instead of 1.
+    const safeStart = Number.isFinite(startWave) ? Math.max(1, Math.floor(startWave)) : 1;
+    this.currentWave = safeStart;
     this.maxWaves = mode === 'CAMPAIGN' ? this.sectorDef.waves : Infinity;
     this.waveTimer = 0;
     this.spawnQueue = [];
