@@ -311,16 +311,25 @@ export class UIManager {
         starsHtml += s <= secData.stars ? '★' : '☆';
       }
 
+      const threat = Math.max(1, Math.min(5, sec.threat || 1));
+      const threatHtml = `<span class="sector-threat">${'☠'.repeat(threat)}</span>`;
+
       card.innerHTML = `
         <div class="sector-info">
           <h3>${sec.name}</h3>
           <p>${sec.subtitle} • Boss: ${sec.bossName}</p>
+          <div class="sector-threat-row">THREAT ${threatHtml}</div>
         </div>
         <div style="text-align: right;">
           <div class="sector-stars">${isUnlocked ? starsHtml : '🔒 LOCKED'}</div>
           <div style="font-size: 0.75rem; color: var(--neon-cyan); margin-top: 4px;">Reward: +${sec.rewardShards} ◆</div>
         </div>
       `;
+
+      if (isUnlocked && sec.color) {
+        card.style.borderColor = sec.color;
+        card.style.boxShadow = `inset 0 0 18px ${sec.color}22`;
+      }
 
       if (isUnlocked) {
         card.onclick = () => {
@@ -766,12 +775,19 @@ export class UIManager {
 
     // Boss Bar
     if (waveManager && waveManager.boss && !waveManager.boss.dead) {
+      const boss = waveManager.boss;
       this.bossBarWrap.classList.remove('hidden');
       this.bossBarWrap.style.setProperty('display', 'block', 'important');
-      this.bossName.textContent = waveManager.boss.name;
-      const bPct = Math.max(0, Math.ceil((waveManager.boss.hp / waveManager.boss.maxHp) * 100));
-      this.bossHpPct.textContent = `${bPct}%`;
+      this.bossName.textContent = boss.name;
+      const bPct = Math.max(0, Math.ceil((boss.hp / boss.maxHp) * 100));
+      const phase = boss.phase || 1;
+      const phaseCount = boss.phaseCount || 3;
+      this.bossHpPct.textContent = `PHASE ${phase}/${phaseCount} · ${bPct}%`;
       this.bossBarFill.style.width = `${bPct}%`;
+      if (boss.color) {
+        this.bossBarFill.style.background = `linear-gradient(90deg, ${boss.color}, #ff7700)`;
+        this.bossBarFill.style.boxShadow = `0 0 12px ${boss.color}`;
+      }
     } else {
       this.bossBarWrap.classList.add('hidden');
       this.bossBarWrap.style.setProperty('display', 'none', 'important');
@@ -806,6 +822,21 @@ export class UIManager {
     const safeTotal = (typeof totalShardsEarned === 'number' && Number.isFinite(totalShardsEarned))
       ? Math.max(0, Math.round(totalShardsEarned))
       : 0;
+
+    const isFinalSector = (sectorDef.id || 0) >= SECTORS.length;
+    const titleEl = document.querySelector('#screen-victory .victory-text');
+    const subtitleEl = document.getElementById('victory-subtitle');
+    if (titleEl) titleEl.textContent = isFinalSector ? 'GALAXY SAVED!' : 'SECTOR SECURED!';
+    if (subtitleEl) {
+      subtitleEl.textContent = isFinalSector
+        ? 'THE DEMON KING HAS FALLEN — THE NEON GALAXY IS FREE'
+        : 'SYSTEM DEFENSE RESTORED';
+    }
+
+    const nextBtn = document.getElementById('btn-next-sector');
+    if (nextBtn) {
+      nextBtn.textContent = isFinalSector ? 'ENTER ENDLESS ARENA ▶' : 'NEXT SECTOR ▶';
+    }
 
     document.getElementById('vic-sector').textContent = sectorDef.name;
     document.getElementById('vic-bonus').textContent = `+${safeBonus.toLocaleString()} ◆`;

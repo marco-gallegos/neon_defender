@@ -125,7 +125,7 @@ export const ENEMY_TYPES = {
 };
 
 export class Enemy {
-  constructor(x, y, typeKey, hpMultiplier = 1.0) {
+  constructor(x, y, typeKey, hpMultiplier = 1.0, difficulty = {}) {
     this.x = x;
     this.y = y;
     this.typeKey = typeKey;
@@ -133,13 +133,25 @@ export class Enemy {
 
     this.maxHp = Math.round(this.def.hp * hpMultiplier);
     this.hp = this.maxHp;
-    this.speed = this.def.speed;
+
+    // Difficulty scaling (damage, cadence, movement)
+    this.damageMult = Number.isFinite(difficulty.damageMult) && difficulty.damageMult > 0
+      ? difficulty.damageMult
+      : 1.0;
+    this.fireRateMult = Number.isFinite(difficulty.fireRateMult) && difficulty.fireRateMult > 0
+      ? difficulty.fireRateMult
+      : 1.0;
+    this.speedMult = Number.isFinite(difficulty.speedMult) && difficulty.speedMult > 0
+      ? difficulty.speedMult
+      : 1.0;
+
+    this.speed = this.def.speed * this.speedMult;
     this.color = this.def.color;
     this.radius = this.def.radius;
-    this.score = this.def.score;
-    this.shardReward = this.def.shards;
+    this.score = Math.round(this.def.score * Math.min(4, 1 + (this.damageMult - 1) * 0.35));
+    this.shardReward = Math.round(this.def.shards * Math.min(5, 1 + (this.damageMult - 1) * 0.45));
 
-    this.shootTimer = 0.8 + Math.random() * 1.8;
+    this.shootTimer = (0.8 + Math.random() * 1.8) / this.fireRateMult;
     this.angle = 0;
     this.rotSpeed = (Math.random() - 0.5) * 3;
     this.age = 0;
@@ -199,8 +211,15 @@ export class Enemy {
     // Shooting logic
     this.shootTimer -= dt;
     if (this.shootTimer <= 0 && this.y > 20 && this.y < 580) {
+      const firstBullet = bullets.length;
       this.fire(player, bullets);
-      this.shootTimer = 1.6 + Math.random() * 2.0;
+      // Scale all bullets fired by this enemy with the sector/arena difficulty
+      if (this.damageMult !== 1) {
+        for (let i = firstBullet; i < bullets.length; i++) {
+          bullets[i].damage = Math.round(bullets[i].damage * this.damageMult);
+        }
+      }
+      this.shootTimer = (1.6 + Math.random() * 2.0) / this.fireRateMult;
     }
 
     return !this.dead;

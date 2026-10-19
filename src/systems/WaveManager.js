@@ -37,13 +37,19 @@ export class WaveManager {
     if (this.mode === 'CAMPAIGN') {
       if (waveNum === this.maxWaves) {
         // Final Boss Wave!
-        this.setBanner(`WARNING: ${this.sectorDef.bossName}!`, 3.0);
+        this.setBanner(`⚠ WARNING: ${this.sectorDef.bossName}! ⚠`, 3.4);
         this.boss = new Boss(
           this.canvasWidth,
           this.canvasHeight,
           this.sectorDef.bossName,
           this.sectorDef.bossHp,
-          this.sectorDef.color
+          this.sectorDef.color,
+          {
+            type: this.sectorDef.bossType,
+            threat: this.sectorDef.threat || Math.ceil(this.sectorId / 2),
+            minionHpMult: this.sectorDef.minionHpMult,
+            minionDifficulty: this.getEnemyDifficulty()
+          }
         );
         this.bossSpawned = true;
       } else {
@@ -54,16 +60,36 @@ export class WaveManager {
       // Endless Arena Mode
       if (waveNum % 5 === 0) {
         // Arena Boss Wave every 5 waves!
-        const bossTier = waveNum / 5;
+        const bossTier = Math.ceil(waveNum / 5);
+        const bossTypes = ['guardian', 'prism', 'hex', 'octagon', 'chronos', 'devil', 'leviathan', 'reaper', 'titan', 'demon_king'];
+        const bossColors = {
+          guardian: '#00f0ff',
+          prism: '#ffe600',
+          hex: '#ff007f',
+          octagon: '#9d00ff',
+          chronos: '#7df9ff',
+          devil: '#ff3300',
+          leviathan: '#9d00ff',
+          reaper: '#ff0055',
+          titan: '#3a86ff',
+          demon_king: '#ff1100'
+        };
+        const bossType = bossTypes[(bossTier - 1) % bossTypes.length];
         const bossName = `ARENA TITAN MK-${bossTier}`;
-        const bossHp = 900 + waveNum * 220;
-        this.setBanner(`ARENA BOSS: ${bossName}!`, 3.0);
+        const bossHp = Math.round(1400 + waveNum * 380 + waveNum * waveNum * 9);
+        this.setBanner(`⚠ ARENA BOSS: ${bossName}! ⚠`, 3.2);
         this.boss = new Boss(
           this.canvasWidth,
           this.canvasHeight,
           bossName,
           bossHp,
-          ['#ff007f', '#ffe600', '#00f0ff', '#39ff14', '#9d00ff'][bossTier % 5]
+          bossColors[bossType] || '#ff007f',
+          {
+            type: bossType,
+            threat: Math.min(10, Math.ceil(waveNum / 5)),
+            minionHpMult: 1 + waveNum * 0.12,
+            minionDifficulty: this.getEnemyDifficulty()
+          }
         );
         this.bossSpawned = true;
       } else {
@@ -73,50 +99,75 @@ export class WaveManager {
     }
   }
 
+  getEnemyDifficulty() {
+    const wave = Math.max(1, Number.isFinite(this.currentWave) ? this.currentWave : 1);
+
+    if (this.mode === 'ARENA') {
+      return {
+        damageMult: Math.min(8, 1 + (wave - 1) * 0.05),
+        fireRateMult: Math.min(3.2, 1 + (wave - 1) * 0.03),
+        speedMult: Math.min(1.8, 1 + (wave - 1) * 0.01)
+      };
+    }
+
+    const sector = Math.max(1, Number.isFinite(this.sectorId) ? this.sectorId : 1);
+    return {
+      damageMult: Math.min(8, 1 + (sector - 1) * 0.2 + (wave - 1) * 0.025),
+      fireRateMult: Math.min(3.4, 1 + (sector - 1) * 0.07 + (wave - 1) * 0.02),
+      speedMult: Math.min(1.8, 1 + (sector - 1) * 0.02 + (wave - 1) * 0.005)
+    };
+  }
+
   generateCampaignWave(wave) {
-    const enemyCount = 6 + wave * 2;
-    const hpMult = 1.0 + (this.sectorId - 1) * 0.35 + (wave - 1) * 0.1;
+    const enemyCount = Math.min(72, Math.round(7 + wave * 2.4));
+    const hpMult = 1.0 + (this.sectorId - 1) * 0.55 + (wave - 1) * 0.16;
+    const difficulty = this.getEnemyDifficulty();
 
     // Rich pool of thematic enemy types
     const pool = ['SCOUT', 'BUG_WASP', 'PLANE_VIPER'];
     if (wave >= 2) pool.push('BUZZSAW', 'BUG_SCARAB', 'HALLOWEEN_PUMPKIN');
     if (wave >= 3) pool.push('HALLOWEEN_BAT', 'DEVIL');
-    if (wave >= 5) pool.push('PLANE_BOMBER', 'HALLOWEEN_SKULL', 'SNIPER', 'RHOMBUS');
-    if (wave >= 7) pool.push('INTERCEPTOR');
+    if (wave >= 4) pool.push('RHOMBUS', 'SNIPER');
+    if (wave >= 5) pool.push('PLANE_BOMBER', 'HALLOWEEN_SKULL');
+    if (wave >= 6) pool.push('INTERCEPTOR');
 
     for (let i = 0; i < enemyCount; i++) {
       const typeKey = pool[Math.floor(Math.random() * pool.length)];
 
       this.spawnQueue.push({
-        delay: 0.4 + i * (1.7 / Math.sqrt(wave + 1)),
+        delay: 0.35 + i * Math.max(0.32, 1.7 / Math.sqrt(wave + 1)),
         x: 40 + Math.random() * (this.canvasWidth - 80),
         y: -30,
         type: typeKey,
-        hpMult: hpMult
+        hpMult: hpMult,
+        difficulty: difficulty
       });
     }
   }
 
   generateArenaWave(wave) {
     // Endless scaling waves with growing intensity and enemy types
-    const enemyCount = 7 + Math.floor(wave * 2.2);
-    const hpMult = 1.0 + (wave - 1) * 0.22;
+    const enemyCount = Math.min(92, 8 + Math.floor(wave * 2.5));
+    const hpMult = 1.0 + (wave - 1) * 0.26;
+    const difficulty = this.getEnemyDifficulty();
 
     const pool = ['SCOUT', 'BUG_WASP', 'PLANE_VIPER'];
     if (wave >= 2) pool.push('BUZZSAW', 'BUG_SCARAB', 'HALLOWEEN_PUMPKIN');
     if (wave >= 3) pool.push('HALLOWEEN_BAT', 'DEVIL');
-    if (wave >= 5) pool.push('PLANE_BOMBER', 'HALLOWEEN_SKULL', 'SNIPER');
-    if (wave >= 7) pool.push('RHOMBUS', 'INTERCEPTOR');
+    if (wave >= 4) pool.push('RHOMBUS', 'SNIPER');
+    if (wave >= 5) pool.push('PLANE_BOMBER', 'HALLOWEEN_SKULL');
+    if (wave >= 6) pool.push('INTERCEPTOR');
 
     for (let i = 0; i < enemyCount; i++) {
       const typeKey = pool[Math.floor(Math.random() * pool.length)];
 
       this.spawnQueue.push({
-        delay: 0.35 + i * Math.max(0.35, (1.8 - wave * 0.08)),
+        delay: 0.32 + i * Math.max(0.28, (1.8 - wave * 0.07)),
         x: 35 + Math.random() * (this.canvasWidth - 70),
         y: -30,
         type: typeKey,
-        hpMult: hpMult
+        hpMult: hpMult,
+        difficulty: difficulty
       });
     }
   }
@@ -138,7 +189,7 @@ export class WaveManager {
     for (let i = this.spawnQueue.length - 1; i >= 0; i--) {
       const item = this.spawnQueue[i];
       if (this.waveTimer >= item.delay) {
-        enemies.push(new Enemy(item.x, item.y, item.type, item.hpMult));
+        enemies.push(new Enemy(item.x, item.y, item.type, item.hpMult, item.difficulty));
         this.spawnQueue.splice(i, 1);
       }
     }
@@ -175,7 +226,7 @@ export class WaveManager {
       mult = 1.0 + (wave - 1) * 0.35;
     } else {
       const sec = Number.isFinite(this.sectorId) ? this.sectorId : 1;
-      mult = 1.0 + (sec - 1) * 0.25;
+      mult = 1.0 + (sec - 1) * 0.3;
     }
     return Number.isFinite(mult) && mult > 0 ? mult : 1.0;
   }

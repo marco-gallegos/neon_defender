@@ -708,6 +708,20 @@ h1, h2, h3 {
   color: #9aa5c4;
 }
 
+.sector-threat-row {
+  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  color: #ff7700;
+}
+
+.sector-threat {
+  color: var(--neon-magenta);
+  text-shadow: 0 0 6px var(--neon-magenta);
+  letter-spacing: 2px;
+}
+
 .sector-stars {
   color: var(--neon-yellow);
   font-size: 0.9rem;

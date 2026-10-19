@@ -30,7 +30,12 @@ const DEFAULT_DATA = {
     2: { unlocked: false, stars: 0, highscore: 0 },
     3: { unlocked: false, stars: 0, highscore: 0 },
     4: { unlocked: false, stars: 0, highscore: 0 },
-    5: { unlocked: false, stars: 0, highscore: 0 }
+    5: { unlocked: false, stars: 0, highscore: 0 },
+    6: { unlocked: false, stars: 0, highscore: 0 },
+    7: { unlocked: false, stars: 0, highscore: 0 },
+    8: { unlocked: false, stars: 0, highscore: 0 },
+    9: { unlocked: false, stars: 0, highscore: 0 },
+    10: { unlocked: false, stars: 0, highscore: 0 }
   },
   arenaStats: {
     bestWave: 0,
@@ -80,9 +85,12 @@ export class Storage {
         totalShardsEarned: sanitizeNumber(parsed?.arenaStats?.totalShardsEarned, 0, 0)
       };
 
-      const safeSectors = { ...DEFAULT_DATA.sectors };
+      const safeSectors = {};
+      for (const [id, sec] of Object.entries(DEFAULT_DATA.sectors)) {
+        safeSectors[id] = { ...sec };
+      }
       if (parsed?.sectors && typeof parsed.sectors === 'object') {
-        for (const [id, sec] of Object.entries(DEFAULT_DATA.sectors)) {
+        for (const [id, sec] of Object.entries(safeSectors)) {
           const parsedSec = parsed.sectors[id];
           if (parsedSec) {
             safeSectors[id] = {
