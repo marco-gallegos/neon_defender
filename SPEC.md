@@ -40,7 +40,7 @@
 **Build:** `npm run build` → `dist/`; deployed to GitHub Pages on push to `master`.
 
 ## 2. Game states
-`MENU`, `CAMPAIGN`/`ARENA` selection, `PLAYING`, `PAUSED`, `GAMEOVER`, `VICTORY`.
+`MENU`, `CAMPAIGN`/`ARENA`/`TRAINING` selection, `PLAYING`, `PAUSED`, `GAMEOVER`, `VICTORY`.
 Screens are DOM overlays toggled by `UIManager.showScreen()`.
 
 ## 3. Campaign (implemented: **10 sectors**)
@@ -124,7 +124,14 @@ Archetypes: `guardian`, `prism`, `hex`, `octagon`, `chronos`, `devil`, `leviatha
 - **Checkpoints:** every `ARENA_CHECKPOINT_INTERVAL = 5` waves cleared unlocks a resume point
   (`arenaStats.checkpoint`, highest cleared multiple of 5). On game over, `handleGameOver`
   computes `floor(wave / 5) * 5` and raises the stored checkpoint if higher.
-- **Resume:** the main menu's **ENDLESS ARENA** button opens `screen-arena`
+- **Resume keeps your upgrades:** the only cumulative in-run upgrade is the **weapon level**
+  (SPREAD capsules, 1–5). When a *new* checkpoint is unlocked, `handleGameOver` banks the
+  player's current `weaponLevel` into `arenaStats.weaponLevel` (clamped 1–5). Resuming a
+  checkpoint (`startRun('ARENA', 1, wave)` with `wave > 1`) restores that level onto the new
+  `Player`, so a wave-40 resume no longer starts back at weapon level 1. Temporary pickups
+  (overdrive, shield restore, EMP, hull repair) still reset each run. The arena checkpoint
+  screen shows the banked level on the top card (`weapon Lv4`).
+- **Resume:** the main menu's **ARENA** button opens `screen-arena`
   (`renderArenaCheckpoints()`), listing **WAVE 1** plus every unlocked multiple of 5, and a locked
   preview of the next one. Selecting one calls `startRun('ARENA', 1, wave)`, which flows into
   `WaveManager(..., startWave)` and spawns that wave directly (boss waves included).
@@ -135,6 +142,32 @@ Archetypes: `guardian`, `prism`, `hex`, `octagon`, `chronos`, `devil`, `leviatha
   (`maybeRotateArenaMusic()`); rotation defers while a boss owns the track.
 - Starts with **only `stage_jungle`** unlocked; clearing sectors 3/6/8/10 progressively unlocks
   the rest.
+
+## 8c. Training Range (`TRAINING` mode, working tree)
+A no-stakes sandbox for inspecting build power. Entered from the main menu (**🎯 TEST RANGE**
+→ `screen-training`), which previews the build before you commit to spawning anything.
+- **Stat breakdown (`src/systems/StatBreakdown.js`):** a pure `computeStatBreakdown(saveData)`
+  returns one card per stat, and **every card itemizes its sources** — base ship value, upgrade
+  level, each equipped item **by name**, and drone contributions. Multiplicative stats also show
+  the worked formula and a stacked source-bar. It re-derives the same pipeline as `Player` so the
+  numbers match in-run values (locked by `stat_breakdown.mjs`).
+- **The stage (`TRAINING` mode):** `WaveManager` constructs with no auto-spawning
+  (`isWaveActive = false`), uses `menu` music, and `update()` returns `CONTINUE` immediately.
+- **Practice targets:** `Game.spawnTrainingEnemy(typeKey)` / `spawnTrainingBoss(preset)` spawn
+  targets that **hover in place and never fire back** (`Enemy.training`), so damage can be measured
+  cleanly. `Game.clearTraining()` wipes targets and resets counters.
+- **Two spawn UIs share one builder** (`UIManager.buildTrainingSpawnButtons()`):
+  - **`screen-training` (menu):** a button per enemy type + the practice boss. Clicking one
+    **enters the range and spawns that target immediately** (`spawnTrainingTarget()`), so no
+    button is ever dead. The stat breakdown sits *below* the spawn list so the controls are
+    reachable without scrolling past a dozen cards.
+  - **`hud-training-panel` (in-run):** a collapsible panel anchored under the pause button,
+    shown only while `waveManager.mode === 'TRAINING'` (toggled from `updateHud()`). It holds the
+    same buttons plus **🧹 CLEAR**, which wipes the live targets.
+- **DPS readout:** the HUD shows `TRAINING RANGE` with a live `DPS` (damage dealt ÷ elapsed) and
+  target count; `Game.recordTrainingDamage()` accumulates hits.
+- **No stakes:** `rollEnemyDrops` early-returns in TRAINING (no loot), and `handleGameOver`
+  restores hull/shield instead of ending the run — you cannot lose progress in the range.
 
 ## 9. Equipment & crystals (working tree — Phases 1–3)
 Implemented in `src/systems/Equipment.js` (+ `src/entities/EquipmentDrop.js`, `UI.js`, `Storage.js`).
@@ -179,7 +212,7 @@ This is a core, intentionally strong mechanic.
 `neon_defender_savedata_v1` — deep-sanitised on load (numbers clamped, unknown fields
 ignored). Persisted: **shards, crystals, inventory, equippedEquipment**, equipped/unlocked
 ships, primaries/secondaries + secondary levels, upgrades, sectors, unlocked arena tracks,
-arena stats (incl. `checkpoint`), audio settings.
+arena stats (incl. `checkpoint` and the banked `weaponLevel`), audio settings.
 Default starting shards = **0**.
 
 ## 14. Controls

@@ -26,6 +26,14 @@ export class WaveManager {
     this.bannerMessage = null;
     this.bannerTimer = 0;
 
+    // Training range: a sandbox with no automatic waves. Enemies are spawned
+    // explicitly via `spawnTrainingEnemy` so the player can measure damage.
+    if (mode === 'TRAINING') {
+      this.isWaveActive = false;
+      this.training = true;
+      return;
+    }
+
     this.initWave(this.currentWave);
   }
 
@@ -111,6 +119,10 @@ export class WaveManager {
   getEnemyDifficulty() {
     const wave = Math.max(1, Number.isFinite(this.currentWave) ? this.currentWave : 1);
 
+    if (this.mode === 'TRAINING') {
+      return { damageMult: 1, fireRateMult: 1, speedMult: 1 };
+    }
+
     if (this.mode === 'ARENA') {
       return {
         damageMult: Math.min(8, 1 + (wave - 1) * 0.05),
@@ -192,6 +204,11 @@ export class WaveManager {
       if (this.bannerTimer <= 0) this.bannerMessage = null;
     }
 
+    // Training range never advances waves — the player controls spawns.
+    if (this.mode === 'TRAINING') {
+      return 'CONTINUE';
+    }
+
     this.waveTimer += dt;
 
     // Check spawn queue
@@ -226,6 +243,39 @@ export class WaveManager {
     }
 
     return 'CONTINUE';
+  }
+
+  // --- Training range ---------------------------------------------------
+  // Spawn one enemy (or a practice boss) on demand. Returns the entity.
+  spawnTrainingEnemy(typeKey, enemies, hpMultiplier = 1) {
+    const x = 60 + Math.random() * Math.max(40, this.canvasWidth - 120);
+    const enemy = new Enemy(x, -30, typeKey, hpMultiplier, this.getEnemyDifficulty());
+    // Practice targets hold position in the upper third so they're easy to hit.
+    enemy.training = true;
+    enemy.canvasHeight = this.canvasHeight;
+    enemies.push(enemy);
+    return enemy;
+  }
+
+  spawnTrainingBoss(name, maxHp, color, enemies) {
+    const boss = new Boss(this.canvasWidth, this.canvasHeight, name, maxHp, color, {
+      type: 'guardian',
+      threat: 1,
+      minionHpMult: 1,
+      minionDifficulty: this.getEnemyDifficulty(),
+      alertMuted: true
+    });
+    boss.training = true;
+    this.boss = boss;
+    this.bossSpawned = true;
+    return boss;
+  }
+
+  clearTrainingBoss() {
+    if (this.boss && this.boss.training) {
+      this.boss = null;
+      this.bossSpawned = false;
+    }
   }
 
   getShardMultiplier() {

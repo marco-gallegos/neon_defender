@@ -83,6 +83,8 @@ class Game {
     this.runScore = 0;
     // Reset arena music rotation so the first swap lands on the next boundary.
     this._lastArenaMusicWave = 0;
+    // Training-range damage telemetry (DPS readout).
+    this.trainingStats = { damageDealt: 0, elapsed: 0, spawned: 0 };
 
     this.bullets = [];
     this.enemies = [];
@@ -101,6 +103,15 @@ class Game {
     this.player = new Player(w, h, this.saveData);
     this.waveManager = new WaveManager(w, h, mode, sectorId, startWave);
 
+    // Resuming an arena checkpoint restores the weapon level banked at that
+    // point, so a deep resume keeps the power you actually earned.
+    if (mode === 'ARENA' && startWave > 1) {
+      const banked = Number(this.saveData.arenaStats?.weaponLevel);
+      if (Number.isFinite(banked) && banked > 0) {
+        this.player.weaponLevel = Math.min(5, Math.max(1, Math.round(banked)));
+      }
+    }
+
     this.timeScale = 1.0;
     if (this.ui?.bossBarWrap) {
       this.ui.bossBarWrap.classList.add('hidden');
@@ -116,6 +127,10 @@ class Game {
   pickStageTrack() {
     if (this.currentMode === 'ARENA') {
       return this.pickArenaTrack();
+    }
+    if (this.currentMode === 'TRAINING') {
+      // Calm menu loop — the range is a workshop, not a battle.
+      return 'menu';
     }
     return SECTOR_TRACKS[this.currentSectorId] || 'stage_jungle';
   }
@@ -187,8 +202,7 @@ class Game {
   }
 
   // 0 (game start) .. 1 (endgame) — drives equipment tier weights.
-  getDropProgress() {
-    if (!this.waveManager) return 0;
+  getDropProgress() {    if (!this.waveManager) return 0;
     if (this.currentMode === 'ARENA') {
       return Math.max(0, Math.min(1, (this.waveManager.currentWave || 1) / 90));
     }
@@ -200,7 +214,47 @@ class Game {
     return Math.max(0, Math.min(1, (sectorIdx + waveFrac) / sectorCount));
   }
 
+  /* ------------------------------------------------------------------ *
+   *  TRAINING RANGE
+   * ------------------------------------------------------------------ */
+  // Accumulate damage dealt so the panel can show a live DPS figure.
+  recordTrainingDamage(amount) {
+    if (this.currentMode !== 'TRAINING' || !this.trainingStats) return;
+    const v = Number(amount);
+    if (Number.isFinite(v) && v > 0) this.trainingStats.damageDealt += v;
+  }
+
+  // Spawn a practice enemy by type key (no wave logic, no drops).
+  spawnTrainingEnemy(typeKey, hpMultiplier = 1) {
+    if (this.currentMode !== 'TRAINING' || !this.waveManager) return null;
+    const enemy = this.waveManager.spawnTrainingEnemy(typeKey, this.enemies, hpMultiplier);
+    if (this.trainingStats) this.trainingStats.spawned++;
+    return enemy;
+  }
+
+  spawnTrainingBoss(preset) {
+    if (this.currentMode !== 'TRAINING' || !this.waveManager) return null;
+    const p = preset || { name: 'PRACTICE TITAN', hp: 5000, color: '#ff007f' };
+    const boss = this.waveManager.spawnTrainingBoss(p.name, p.hp, p.color, this.enemies);
+    if (this.trainingStats) this.trainingStats.spawned++;
+    return boss;
+  }
+
+  // Remove every practice target and reset the damage counters.
+  clearTraining() {
+    this.enemies.length = 0;
+    this.bullets.length = 0;
+    if (this.waveManager) this.waveManager.clearTrainingBoss();
+    this.trainingStats = { damageDealt: 0, elapsed: 0, spawned: 0 };
+    if (this.ui?.bossBarWrap) {
+      this.ui.bossBarWrap.classList.add('hidden');
+      this.ui.bossBarWrap.style.setProperty('display', 'none', 'important');
+    }
+  }
+
   rollEnemyDrops(entity, isBoss = false) {
+    // Practice targets never drop loot.
+    if (this.currentMode === 'TRAINING') return;
     if (!entity) return;
     const progress = this.getDropProgress();
     const luckMult = (this.player && Number.isFinite(this.player.luckMult) && this.player.luckMult > 0)
@@ -230,6 +284,16 @@ class Game {
   }
 
   handleGameOver(reason = 'HULL INTEGRITY COMPROMISED') {
+    // Training range has no stakes: no banking, no records, no game-over modal.
+    if (this.currentMode === 'TRAINING') {
+      this.player.hp = this.player.maxHp;
+      this.player.shield = this.player.maxShield;
+      this.player.isDead = false;
+      this.player.invulnerableTimer = 1.5;
+      this.clearTraining();
+      return;
+    }
+
     this.state = 'GAMEOVER';
     this.renderer.addShake(15, 0.5);
 
@@ -264,6 +328,10 @@ class Game {
       const clearedCheckpoint = Math.floor(currentWave / ARENA_CHECKPOINT_INTERVAL) * ARENA_CHECKPOINT_INTERVAL;
       if (clearedCheckpoint > (Number(this.saveData.arenaStats.checkpoint) || 0)) {
         this.saveData.arenaStats.checkpoint = clearedCheckpoint;
+        // Bank the weapon level reached at this checkpoint so resuming doesn't
+        // drop the player back to level 1 after a deep run.
+        this.saveData.arenaStats.weaponLevel = Math.min(5, Math.max(1,
+          Number(this.player?.weaponLevel) || 1));
       }
     }
 
@@ -403,6 +471,11 @@ class Game {
     const w = this.renderer.width;
     const h = this.renderer.height;
 
+    // Training range: advance the DPS clock.
+    if (this.currentMode === 'TRAINING' && this.trainingStats) {
+      this.trainingStats.elapsed += dt;
+    }
+
     // Feed touch / pointer target to player
     if (this.input.isPointerDown) {
       this.player.setTarget(this.input.targetX, this.input.targetY);
@@ -524,6 +597,7 @@ class Game {
           const d = Math.hypot(b.x - boss.x, b.y - boss.y);
           if (d < b.radius + boss.radius) {
             boss.takeDamage(b.damage, this.particles, this.floatingTexts);
+            this.recordTrainingDamage(b.damage);
             hit = true;
           }
         }
@@ -535,6 +609,7 @@ class Game {
             const d = Math.hypot(b.x - enemy.x, b.y - enemy.y);
             if (d < b.radius + enemy.radius) {
               enemy.takeDamage(b.damage, this.particles, this.floatingTexts);
+              this.recordTrainingDamage(b.damage);
               hit = true;
               break;
             }

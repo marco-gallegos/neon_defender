@@ -331,6 +331,28 @@ h1, h2, h3 {
   flex: 1;
 }
 
+/* Two hero mode buttons side by side (home screen) */
+.button-row.mode-row {
+  gap: 8px;
+  align-items: stretch;
+}
+
+.button-row.mode-row button {
+  font-size: 0.82rem;
+  padding: 14px 6px;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.button-row.mode-row .hot-badge {
+  font-size: 0.55rem;
+  padding: 2px 5px;
+}
+
 /* Three compact secondary buttons in one row (home screen) */
 .button-row.three-up {
   gap: 6px;
@@ -1585,4 +1607,350 @@ h1, h2, h3 {
     transform: none;
     text-align: right;
   }
+}
+
+/* ================= TRAINING RANGE ================= */
+/* In-run spawn panel (HUD). Anchored under the pause button so it never
+   covers the ship or the bottom weapon controls. */
+.hud-training-panel {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 10px) + 56px);
+  right: 12px;
+  width: min(190px, 58vw);
+  z-index: 38;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.training-panel-toggle {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  letter-spacing: 0.5px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 0, 127, 0.55);
+  background: rgba(20, 8, 32, 0.92);
+  color: var(--neon-magenta);
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255, 0, 127, 0.3);
+}
+
+.hud-training-controls {
+  width: 100%;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(10, 6, 24, 0.94);
+  border: 1px solid rgba(255, 0, 127, 0.4);
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  box-shadow: 0 0 18px rgba(255, 0, 127, 0.18);
+}
+
+/* Collapsed state hides the button list but keeps the toggle visible. */
+.hud-training-panel.collapsed .hud-training-controls {
+  display: none;
+}
+
+.hud-training-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hud-training-grid .training-spawn-btn {
+  padding: 6px 8px;
+  font-size: 0.62rem;
+  gap: 6px;
+}
+
+.hud-training-grid .training-spawn-btn.boss-spawn {
+  grid-column: auto;
+}
+
+.hud-training-grid .spawn-hp {
+  font-size: 0.55rem;
+}
+
+.training-panel-clear {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  padding: 7px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(57, 255, 20, 0.45);
+  background: rgba(8, 26, 10, 0.9);
+  color: var(--neon-lime);
+  cursor: pointer;
+}
+
+.training-ship-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: rgba(12, 16, 38, 0.8);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 12px;
+}
+
+#training-ship-canvas {
+  filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.5));
+  flex-shrink: 0;
+}
+
+.training-ship-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.training-ship-name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 8px var(--neon-yellow);
+}
+
+.training-ship-passive {
+  font-size: 0.76rem;
+  color: var(--neon-lime);
+}
+
+.training-ship-weapons {
+  font-size: 0.72rem;
+  color: #a0a8cc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.training-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-detail-card {
+  background: rgba(10, 14, 34, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.stat-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.stat-detail-title {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.5px;
+  color: var(--neon-cyan);
+}
+
+.stat-detail-total {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.stat-detail-total small {
+  font-size: 0.62rem;
+  color: #8892b0;
+  font-weight: 400;
+}
+
+.stat-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-source-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.76rem;
+  padding: 2px 0;
+}
+
+.source-label {
+  color: #cfe6ff;
+  flex-shrink: 0;
+}
+
+.source-detail {
+  color: #6f7a9c;
+  font-size: 0.66rem;
+}
+
+.source-value {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.source-value.zero {
+  color: #5c6480;
+  font-weight: 400;
+}
+
+/* Colour-code each contribution source */
+.kind-ship .source-label { color: #c9a6ff; }
+.kind-ship .source-value { color: #c9a6ff; }
+.kind-upgrade .source-label { color: #8fe6ff; }
+.kind-upgrade .source-value { color: #8fe6ff; }
+.kind-equipment .source-label { color: #9dff7a; }
+.kind-equipment .source-value { color: #9dff7a; }
+.kind-drone .source-label { color: #ffb066; }
+.kind-drone .source-value { color: #ffb066; }
+.kind-total .source-label { color: var(--neon-yellow); font-weight: 700; }
+.kind-total .source-value { color: var(--neon-yellow); }
+
+.stat-formula {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  color: #7d86a8;
+}
+
+.stat-extra {
+  margin-top: 5px;
+  font-size: 0.72rem;
+  color: #a0a8cc;
+}
+
+.stat-extra b { color: #fff; }
+
+/* Contribution bar */
+.contrib-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.contrib-seg { height: 100%; }
+
+.contrib-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.contrib-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  color: #8892b0;
+}
+
+.contrib-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Spawn controls */
+.training-spawn-header {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  color: var(--neon-magenta);
+  margin: 16px 0 8px;
+}
+
+.training-spawn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 7px;
+}
+
+.training-spawn-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  background: rgba(14, 18, 40, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: #dfe6f5;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.training-spawn-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.training-spawn-btn.boss-spawn {
+  grid-column: 1 / -1;
+  border-color: var(--neon-magenta);
+  box-shadow: inset 0 0 14px rgba(255, 0, 127, 0.12);
+}
+
+.spawn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.spawn-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spawn-hp {
+  color: #8892b0;
+  font-size: 0.62rem;
+  flex-shrink: 0;
+}
+
+.training-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 12px 0 4px;
+}
+
+/* The "STAT BREAKDOWN" header needs extra top space after the spawn grid. */
+.training-spawn-grid + .training-spawn-header {
+  margin-top: 20px;
+}
+
+@media (max-height: 780px) {
+  #training-ship-canvas { width: 68px; height: 68px; }
+  .training-ship-name { font-size: 1rem; }
+  .stat-detail-total { font-size: 1rem; }
+  .training-spawn-grid { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
 }

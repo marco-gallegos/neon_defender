@@ -52,7 +52,8 @@ const DEFAULT_DATA = {
     bestWave: 0,
     bestScore: 0,
     totalShardsEarned: 0,
-    checkpoint: 0 // Highest arena checkpoint wave unlocked (multiple of ARENA_CHECKPOINT_INTERVAL)
+    checkpoint: 0, // Highest arena checkpoint wave unlocked (multiple of ARENA_CHECKPOINT_INTERVAL)
+    weaponLevel: 1 // In-run weapon level (SPREAD capsules) at the moment the checkpoint was set
   },
   settings: {
     sfx: true,
@@ -96,7 +97,9 @@ export class Storage {
         bestWave: sanitizeNumber(parsed?.arenaStats?.bestWave, 0, 0),
         bestScore: sanitizeNumber(parsed?.arenaStats?.bestScore, 0, 0),
         totalShardsEarned: sanitizeNumber(parsed?.arenaStats?.totalShardsEarned, 0, 0),
-        checkpoint: sanitizeNumber(parsed?.arenaStats?.checkpoint, 0, 0)
+        checkpoint: sanitizeNumber(parsed?.arenaStats?.checkpoint, 0, 0),
+        // Weapon level is clamped to the game's own 1..5 range.
+        weaponLevel: Math.min(5, Math.max(1, sanitizeNumber(parsed?.arenaStats?.weaponLevel, 1, 1)))
       };
 
       const safeSectors = {};

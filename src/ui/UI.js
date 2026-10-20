@@ -1,9 +1,26 @@
 // UI Screen Management, Shop Rendering, Hangar, and HUD Updates
 import { UPGRADES, SHIPS, SECTORS, SECONDARY_WEAPONS, PRIMARY_WEAPONS, ARENA_CHECKPOINT_INTERVAL } from '../systems/UpgradeSystem.js';
-import { CATEGORIES, EQUIP_SLOTS, TIER_META, formatEffect, disassembleValue, tierUpRequirement, findMergePartner, applyTierUp, fuseSSItems, S_FUSION_COST } from '../systems/Equipment.js';
+import { CATEGORIES, EQUIP_SLOTS, TIER_META, formatEffect, disassembleValue, tierUpRequirement, findMergePartner, applyTierUp, fuseSSItems, S_FUSION_COST, EFFECT_TABLE } from '../systems/Equipment.js';
+import { computeStatBreakdown } from '../systems/StatBreakdown.js';
+import { ENEMY_TYPES } from '../entities/Enemy.js';
 import { Renderer } from '../engine/Renderer.js';
 import { audio, TRACK_NAMES } from '../engine/Audio.js';
 import { Storage } from '../engine/Storage.js';
+
+// Format one source line of a stat breakdown, respecting the stat's unit kind.
+function formatBreakdownValue(line, group) {
+  const v = Number(line.value) || 0;
+  const stat = EFFECT_TABLE[line.stat];
+  // Percentage-style stats
+  if (group.unit === '%' || (stat && stat.kind === 'pct') || /Resist|Speed|Luck|Score|Aura|Chance/.test(group.title)) {
+    const p = Math.round(v * 100);
+    return `${p >= 0 ? '+' : ''}${p}%`;
+  }
+  if (group.unit === 'px') return `${Math.round(v)}px`;
+  if (group.unit === 'shots/s') return v.toFixed(2);
+  if (Number.isInteger(v)) return String(v);
+  return v.toFixed(1);
+}
 
 export class UIManager {
   constructor(game) {
@@ -17,6 +34,7 @@ export class UIManager {
       shop: document.getElementById('screen-shop'),
       hangar: document.getElementById('screen-hangar'),
       arsenal: document.getElementById('screen-arsenal'),
+      training: document.getElementById('screen-training'),
       settings: document.getElementById('screen-settings'),
       pause: document.getElementById('screen-pause'),
       gameover: document.getElementById('screen-gameover'),
@@ -109,6 +127,12 @@ export class UIManager {
       this.showScreen('arsenal');
     };
 
+    document.getElementById('btn-open-training').onclick = () => {
+      audio.playClick();
+      this.renderTraining();
+      this.showScreen('training');
+    };
+
     document.getElementById('btn-open-settings').onclick = () => {
       audio.playClick();
       this.showScreen('settings');
@@ -144,6 +168,22 @@ export class UIManager {
       this.renderMenuPreview();
       this.showScreen('menu');
     };
+
+    document.getElementById('btn-training-back').onclick = () => {
+      audio.playClick();
+      this.renderMenuPreview();
+      this.showScreen('menu');
+    };
+
+    // Training range: enter the sandbox stage.
+    // (Clearing targets lives on the in-run HUD panel, not here.)
+    const trainingStart = document.getElementById('btn-training-start');
+    if (trainingStart) {
+      trainingStart.onclick = () => {
+        audio.playClick();
+        this.game.startRun('TRAINING');
+      };
+    }
 
     document.getElementById('btn-settings-back').onclick = () => {
       audio.playClick();
@@ -489,6 +529,9 @@ export class UIManager {
     const saved = Number(this.game.saveData.arenaStats?.checkpoint) || 0;
     const unlockedWave = Math.floor(saved / ARENA_CHECKPOINT_INTERVAL) * ARENA_CHECKPOINT_INTERVAL;
     const bestWave = Number(this.game.saveData.arenaStats?.bestWave) || 0;
+    // Weapon level banked at the highest checkpoint — restored on resume.
+    const bankedWeaponLevel = Math.min(5, Math.max(1,
+      Number(this.game.saveData.arenaStats?.weaponLevel) || 1));
 
     // Wave 1 is always available; then every checkpoint up to the unlocked one.
     // Offer a peek at the next checkpoint so players see there's something to chase.
@@ -531,11 +574,161 @@ export class UIManager {
     makeCard(1, true, 'WAVE 1', 'Fresh run from the beginning.');
 
     for (let w = ARENA_CHECKPOINT_INTERVAL; w <= unlockedWave; w += ARENA_CHECKPOINT_INTERVAL) {
-      makeCard(w, true, `WAVE ${w}`, `Resume from checkpoint ${w / ARENA_CHECKPOINT_INTERVAL}.`);
+      // The top checkpoint is the one you'd actually resume from, so it shows
+      // the weapon level banked there.
+      const isTop = w === unlockedWave;
+      const sub = (isTop && bankedWeaponLevel > 1)
+        ? `Resume from checkpoint ${w / ARENA_CHECKPOINT_INTERVAL} • weapon Lv${bankedWeaponLevel}`
+        : `Resume from checkpoint ${w / ARENA_CHECKPOINT_INTERVAL}.`;
+      makeCard(w, true, `WAVE ${w}`, sub);
     }
 
     // Locked preview of the next checkpoint
     makeCard(nextCheckpoint, false, `WAVE ${nextCheckpoint}`, `Reach wave ${nextCheckpoint} to unlock.`);
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  TRAINING RANGE — itemized stat breakdown + practice targets
+   * ------------------------------------------------------------------ */
+  renderTraining() {
+    this.refreshCurrencyDisplays();
+    const saveData = this.game.saveData;
+    const breakdown = computeStatBreakdown(saveData);
+
+    // --- Ship header ---
+    const canvas = document.getElementById('training-ship-canvas');
+    if (canvas) Renderer.drawShipPreview(canvas, breakdown.ship);
+    const nameEl = document.getElementById('training-ship-name');
+    if (nameEl) nameEl.textContent = breakdown.ship.name;
+    const passiveEl = document.getElementById('training-ship-passive');
+    if (passiveEl) passiveEl.textContent = breakdown.ship.perkText || '';
+    const weaponsEl = document.getElementById('training-ship-weapons');
+    if (weaponsEl) {
+      const prim = PRIMARY_WEAPONS[saveData.equippedPrimary || 'plasma'];
+      const sec = SECONDARY_WEAPONS[saveData.equippedSecondary || 'seeker'];
+      weaponsEl.textContent = `${prim?.icon || '🔫'} ${prim?.name || '—'} • ${sec?.icon || '🚀'} ${sec?.name || '—'}`;
+    }
+
+    // --- Stat cards ---
+    this.renderTrainingStats(breakdown);
+
+    // --- Spawn buttons ---
+    const spawnContainer = document.getElementById('training-spawn-container');
+    if (spawnContainer) {
+      spawnContainer.innerHTML = '';
+      this.buildTrainingSpawnButtons(spawnContainer, 'menu');
+    }
+
+    // --- Clear button reflects live target count ---
+    const shardEl = document.getElementById('training-shards');
+    if (shardEl) shardEl.textContent = (Number(saveData.shards) || 0).toLocaleString();
+  }
+
+  // Build one spawn button per enemy type (plus the practice boss) into a
+  // container. Shared by the menu preview and the in-run HUD panel.
+  buildTrainingSpawnButtons(container, variant = 'menu') {
+    if (!container) return;
+    container.innerHTML = '';
+
+    Object.entries(ENEMY_TYPES).forEach(([key, def]) => {
+      const btn = document.createElement('button');
+      btn.className = 'training-spawn-btn';
+      btn.style.borderColor = def.color;
+      btn.innerHTML = `
+        <span class="spawn-dot" style="background:${def.color}"></span>
+        <span class="spawn-name">${def.name}</span>
+        <span class="spawn-hp">${def.hp} HP</span>
+      `;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        this.spawnTrainingTarget(key);
+      };
+      container.appendChild(btn);
+    });
+
+    // Practice boss
+    const bossBtn = document.createElement('button');
+    bossBtn.className = 'training-spawn-btn boss-spawn';
+    bossBtn.innerHTML = `
+      <span class="spawn-dot" style="background:#ff007f"></span>
+      <span class="spawn-name">PRACTICE TITAN</span>
+      <span class="spawn-hp">5000 HP</span>
+    `;
+    bossBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.spawnTrainingTarget(null);
+    };
+    container.appendChild(bossBtn);
+  }
+
+  // Spawn a practice target from either the menu or the in-run HUD panel.
+  // From the menu this enters the range first, so the button always does
+  // something visible instead of silently failing.
+  spawnTrainingTarget(typeKey) {
+    audio.playClick();
+    if (this.game.currentMode !== 'TRAINING') {
+      this.game.startRun('TRAINING');
+    }
+    if (typeKey) {
+      this.game.spawnTrainingEnemy(typeKey, 1);
+    } else {
+      this.game.spawnTrainingBoss({ name: 'PRACTICE TITAN', hp: 5000, color: '#ff007f' });
+    }
+  }
+
+  // Render one card per stat group, each listing every contributing source.
+  renderTrainingStats(breakdown) {
+    const container = document.getElementById('training-stats-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    breakdown.groups.forEach(group => {
+      const card = document.createElement('div');
+      card.className = 'stat-detail-card';
+
+      const linesHtml = (group.lines || []).map(l => {
+        const isZero = !l.value;
+        return `
+          <div class="stat-source-row kind-${l.kind}">
+            <span class="source-label">${l.label}</span>
+            ${l.detail ? `<span class="source-detail">${l.detail}</span>` : ''}
+            <span class="source-value ${isZero ? 'zero' : ''}">${formatBreakdownValue(l, group)}</span>
+          </div>
+        `;
+      }).join('');
+
+      card.innerHTML = `
+        <div class="stat-detail-head">
+          <span class="stat-detail-title">${group.title}</span>
+          <span class="stat-detail-total">${group.display}${group.unit && group.unit !== '%' ? ` <small>${group.unit}</small>` : ''}</span>
+        </div>
+        <div class="stat-source-list">${linesHtml}</div>
+        ${!group.isList && group.formula ? `<div class="stat-formula">= ${group.formula}</div>` : ''}
+        ${group.extra ? `<div class="stat-extra">${group.extra.label}: <b>${group.extra.display}</b></div>` : ''}
+        ${this.renderContributionBar(group)}
+      `;
+
+      container.appendChild(card);
+    });
+  }
+
+  // A tiny stacked bar showing how much each source contributes to a total.
+  renderContributionBar(group) {
+    const parts = (group.parts || []).filter(p => Math.abs(p.value) > 0.0001);
+    if (!parts.length) return '';
+    const total = parts.reduce((sum, p) => sum + Math.abs(p.value), 0);
+    if (total <= 0) return '';
+    const colors = { Ship: '#9d00ff', Upgrades: '#00f0ff', Equipment: '#39ff14', Drones: '#ff7700' };
+    const segs = parts.map(p => {
+      const w = (Math.abs(p.value) / total) * 100;
+      const c = colors[p.label] || '#8892b0';
+      return `<div class="contrib-seg" style="width:${w}%;background:${c}" title="${p.label}"></div>`;
+    }).join('');
+    const legend = parts.map(p => {
+      const c = colors[p.label] || '#8892b0';
+      return `<span class="contrib-legend"><i style="background:${c}"></i>${p.label}</span>`;
+    }).join('');
+    return `<div class="contrib-bar">${segs}</div><div class="contrib-legend-row">${legend}</div>`;
   }
 
   // Render Workshop Upgrades
@@ -1155,6 +1348,42 @@ export class UIManager {
     });
   }
 
+  // Set up the in-run spawn panel shown while in the Training Range.
+  // Built once; visibility is toggled from updateHud() by mode.
+  setupTrainingHudPanel() {
+    const panel = document.getElementById('hud-training-panel');
+    if (!panel) return;
+
+    const grid = document.getElementById('hud-training-grid');
+    if (grid && !grid.dataset.built) {
+      this.buildTrainingSpawnButtons(grid, 'hud');
+      grid.dataset.built = '1';
+    }
+
+    // Collapse / expand the panel
+    const toggle = document.getElementById('btn-training-panel-toggle');
+    if (toggle && !toggle.dataset.bound) {
+      toggle.onclick = (e) => {
+        e.stopPropagation();
+        audio.playClick();
+        panel.classList.toggle('collapsed');
+        toggle.textContent = panel.classList.contains('collapsed') ? '🎯 SPAWN ▸' : '🎯 SPAWN ▾';
+      };
+      toggle.dataset.bound = '1';
+    }
+
+    // Clear every practice target
+    const clearBtn = document.getElementById('btn-hud-training-clear');
+    if (clearBtn && !clearBtn.dataset.bound) {
+      clearBtn.onclick = (e) => {
+        e.stopPropagation();
+        audio.playClick();
+        this.game.clearTraining();
+      };
+      clearBtn.dataset.bound = '1';
+    }
+  }
+
   // Update Ingame HUD
   updateHud(player, waveManager, currentRunShards, currentRunCrystals = 0) {
     if (!player) return;
@@ -1173,9 +1402,25 @@ export class UIManager {
     if (waveManager.mode === 'CAMPAIGN') {
       this.hudModeTitle.textContent = `SECTOR ${waveManager.sectorId}`;
       this.hudWaveText.textContent = `WAVE ${waveManager.currentWave}/${waveManager.maxWaves}`;
+    } else if (waveManager.mode === 'TRAINING') {
+      this.hudModeTitle.textContent = 'TRAINING RANGE';
+      const stats = this.game?.trainingStats;
+      const dps = (stats && stats.elapsed > 0.25) ? (stats.damageDealt / stats.elapsed) : 0;
+      this.hudWaveText.textContent = `DPS ${Math.round(dps).toLocaleString()} • ${this.game.enemies.length} TARGETS`;
     } else {
       this.hudModeTitle.textContent = 'ENDLESS ARENA';
       this.hudWaveText.textContent = `WAVE ${waveManager.currentWave}`;
+    }
+
+    // Training Range spawn panel — only visible while in the range.
+    const trainPanel = document.getElementById('hud-training-panel');
+    if (trainPanel) {
+      const isTraining = waveManager.mode === 'TRAINING';
+      if (isTraining && !trainPanel.dataset.ready) {
+        this.setupTrainingHudPanel();
+        trainPanel.dataset.ready = '1';
+      }
+      trainPanel.classList.toggle('hidden', !isTraining);
     }
 
     // Shards

@@ -167,6 +167,18 @@ export class Enemy {
     this.age += dt;
     this.angle += this.rotSpeed * dt;
 
+    // Training range: hold position and don't fight back, so the player can
+    // measure damage cleanly without dodging or dying mid-test.
+    if (this.training) {
+      const targetY = (this.canvasHeight || 800) * 0.28;
+      if (this.y < targetY) {
+        this.y += this.speed * dt;
+      } else {
+        this.x = (this.startX ?? this.x) + Math.sin(this.age * 1.2) * 24;
+      }
+      return !this.dead;
+    }
+
     // Movement patterns
     if (this.typeKey === 'SCOUT') {
       this.y += this.speed * dt;

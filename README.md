@@ -20,10 +20,16 @@ A high-octane, neon vector shoot 'em up game optimized for **cellphones (touch c
   - Debris bursts, shockwave rings, floating arcade damage counters, and chromatic impact shakes.
   - Built-in procedural Web Audio chiptune synth with a **9-track original soundtrack** in the style of the classics: Metal Slug boss marches, Contra jungle runs, Castlevania gallops, Streets of Rage grooves, Mega Man industrial energy and a Sonic-style menu theme — with dynamic switches (stage theme per sector, Gradius-style warning sting + march on boss spawn, victory fanfare, game-over dirge) plus punchy SFX (laser, bass drops, shield deflections, powerup fanfares). Zero audio asset loading lag! See [MUSIC.md](MUSIC.md) for the engine guide and track list.
 
+- **🎯 Test Range: know exactly where your numbers come from**:
+  - A no-stakes sandbox stage (no enemy waves, no loot, no game over) reached from the main menu.
+  - **Itemized stat breakdown**: every stat shows its sources line by line — base ship value, upgrade level, each equipped item **by name**, and drone contributions (e.g. `Damage 100 = ship 60 + OVERCHARGE (A gun) 22 + command aura (drones) 18`), plus the worked formula and a stacked source bar.
+  - **Spawn practice targets**: tap any of the 13 enemy types (or the 5000 HP Practice Titan) to drop one into the range instantly; an in-run **🎯 SPAWN** panel keeps the buttons one tap away, with a live **DPS readout** and a **🧹 CLEAR** button. Targets hold position and never shoot back.
+
 - **💰 Zero Pay-To-Win: Endless Arena Farming Mode**:
   - Want more upgrades and ships? Jump straight into the **Endless Arena Mode**!
   - Arena mode features scaling waves with escalating shard drop multipliers (1.5x, 2.5x, 4.0x+).
   - Face colossal **Arena Titans** every 5 waves to harvest giant shard jackpots.
+  - **Checkpoint every 5 waves**: die deep, resume where you left off — your banked **weapon level** carries over, so you never restart a wave-40 run from scratch.
   - Upgrade every single stat to maximum level and unlock all ships purely through fun, addictive gameplay.
 
 - **🛸 Cyber Workshop & Starship Hangar**:

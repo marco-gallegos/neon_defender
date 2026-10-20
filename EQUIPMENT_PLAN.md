@@ -52,13 +52,49 @@
 ## Phase 5 — Skins, polish, economy validation
 - [ ] 5.1 Skin templates + cosmetic overlays (cosmetic-only, confirmed).
 - [~] 5.2 Verify 70% shard cut and crystal pacing. (cut applied in `main.js`; permanent — pacing review pending)
-- [ ] 5.3 CHANGELOG/README touch-up.
+- [x] 5.3 CHANGELOG/README touch-up.
+- [x] 5.4 **Test Range** (unplanned, user-requested): itemized stat breakdown + practice targets.
+  - `src/systems/StatBreakdown.js` — pure `computeStatBreakdown(saveData)`; every stat card lists
+    base ship / upgrade level / each equipped item **by name** / drone contributions, plus the
+    worked formula, a stacked source bar, and a summary object. Numbers verified against the real
+    `Player` pipeline by `/tmp/opencode/stat_breakdown.mjs` (40 assertions).
+  - `TRAINING` mode: `WaveManager` skips wave logic (`training` flag, `update()` → `CONTINUE`,
+    neutral difficulty), `menu` music, no loot (`rollEnemyDrops` early-return), and `handleGameOver`
+    restores hull/shield instead of ending the run.
+  - Practice targets hover in place and never fire back (`Enemy.training`); `Game.spawnTrainingEnemy`
+    / `spawnTrainingBoss` / `clearTraining`, plus live `DPS` + target count in the HUD.
+  - **Two spawn UIs, one builder** (`UIManager.buildTrainingSpawnButtons()`):
+    - `screen-training` (menu) — buttons now **enter the range and spawn** the target
+      (`spawnTrainingTarget()`), so no button is dead; spawn list sits **above** the stat
+      breakdown so the controls are reachable without scrolling.
+    - `hud-training-panel` (in-run) — collapsible **🎯 SPAWN** panel under the pause button,
+      visible only in TRAINING mode, with the same buttons plus **🧹 CLEAR**.
+  - The dead menu **CLEAR TARGETS** button was removed (targets only exist in-run).
+  - Verified by `/tmp/opencode/training_integration.mjs` (24) + `/tmp/opencode/training_ui_dom.mjs`
+    (28 DOM-level assertions driving the real `UIManager`).
+
+- [x] 5.5 **Arena checkpoint keeps your upgrades** (user-requested).
+  - The only cumulative in-run upgrade is the **weapon level** (SPREAD capsules, 1–5).
+  - `handleGameOver` banks `player.weaponLevel` into `arenaStats.weaponLevel` (clamped 1–5)
+    **when a new checkpoint is unlocked**; `Storage` sanitises it to 1..5 on load.
+  - `startRun('ARENA', 1, wave)` with `wave > 1` restores the banked level onto the new `Player`,
+    so a wave-40 resume keeps the power earned instead of restarting at weapon level 1.
+  - The arena checkpoint screen shows `weapon Lv4` on the top card.
+  - Verified by `/tmp/opencode/arena_resume.mjs` (18 assertions, incl. legacy-save + clamping).
+
+- [x] 5.6 **Home menu: CAMPAIGN / ARENA two-column layout** (user-requested).
+  - The two hero mode buttons now sit side by side in `.button-row.mode-row` (2 columns);
+    the tool row (WORKSHOP / HANGAR / ARSENAL) and the TEST RANGE / SETTINGS row are unchanged.
+  - Button text shortened to **🚀 CAMPAIGN** and **⚔️ ARENA** to fit the half-width cells.
 
 ---
 
 ## Notes / blockers
 - Existing `Enemy.onDestroy(particles, items, shardMultiplier)` is called from `main.js`; drops are rolled in `main.js` to avoid coupling entities to the equipment system.
 - Player stat flow: constructor computes base stats from `UPGRADES` + `shipDef`; equipment bonuses are applied **after** that.
+- `StatBreakdown.js` is a **second implementation** of the same pipeline as `Player`. It is kept honest
+  by the regression test in `/tmp/opencode/stat_breakdown.mjs`; **if `Player` changes its math, update
+  `StatBreakdown.js` in the same commit** or that test will fail.
 - Equipment is now **stored, equipped, and disassembled** in-game via the ARSENAL screen (Phase 3). Fusion (Phase 4) is still pending, so S/S+ items can only be created via the console path until then.
 - Deferred: **Store stock rotation is generated per render**, so prices/items reshuffle when reopening. Needs stable seeding when Phase 4 lands.
 - Deferred: some loaded items may predate a template change (no `defId` backfill). Low risk unless templates are renamed.

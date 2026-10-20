@@ -61,6 +61,17 @@
           <button id="btn-pause" class="icon-btn pause-btn" aria-label="Pause">⏸</button>
         </div>
 
+        <!-- Training Range spawn panel (TRAINING mode only) -->
+        <div id="hud-training-panel" class="hud-training-panel hidden">
+          <button id="btn-training-panel-toggle" class="training-panel-toggle">🎯 SPAWN ▾</button>
+          <div id="hud-training-controls" class="hud-training-controls">
+            <div class="hud-training-grid" id="hud-training-grid">
+              <!-- Populated by JS: one button per enemy type -->
+            </div>
+            <button id="btn-hud-training-clear" class="training-panel-clear">🧹 CLEAR</button>
+          </div>
+        </div>
+
         <!-- Boss Health Bar -->
         <div id="boss-bar-wrap" class="boss-bar-container hidden">
           <div class="boss-name-row">
@@ -135,14 +146,16 @@
         </div>
 
         <div class="menu-actions">
-          <button id="btn-play-campaign" class="neon-btn primary-btn">
-            <span class="btn-shine"></span>
-            🚀 CAMPAIGN SECTORS
-          </button>
-          <button id="btn-play-arena" class="neon-btn arena-btn">
-            <span class="btn-shine"></span>
-            ⚔️ ENDLESS ARENA <span class="hot-badge">FARM $</span>
-          </button>
+          <div class="button-row two-up mode-row">
+            <button id="btn-play-campaign" class="neon-btn primary-btn">
+              <span class="btn-shine"></span>
+              🚀 CAMPAIGN
+            </button>
+            <button id="btn-play-arena" class="neon-btn arena-btn">
+              <span class="btn-shine"></span>
+              ⚔️ ARENA <span class="hot-badge">FARM $</span>
+            </button>
+          </div>
           <div class="button-row three-up">
             <button id="btn-open-shop" class="neon-btn secondary-btn">
               ⚡ WORKSHOP
@@ -154,9 +167,14 @@
               🎒 ARSENAL
             </button>
           </div>
-          <button id="btn-open-settings" class="neon-btn mini-btn">
-            ⚙️ SETTINGS & HOW TO PLAY
-          </button>
+          <div class="button-row two-up">
+            <button id="btn-open-training" class="neon-btn secondary-btn">
+              🎯 TEST RANGE
+            </button>
+            <button id="btn-open-settings" class="neon-btn secondary-btn">
+              ⚙️ SETTINGS
+            </button>
+          </div>
         </div>
       </div>
 
@@ -263,6 +281,46 @@
 
         <div class="arsenal-list" id="arsenal-items-container">
           <!-- Inventory populated by JS -->
+        </div>
+      </div>
+
+      <!-- Training Range / Stat Breakdown Screen -->
+      <div id="screen-training" class="ui-screen hidden">
+        <div class="screen-header">
+          <button id="btn-training-back" class="neon-btn mini-btn">◀ BACK</button>
+          <h2>TEST RANGE</h2>
+          <div class="currency-pill small">
+            <span class="shard-icon">◆</span>
+            <span id="training-shards">0</span>
+          </div>
+        </div>
+
+        <div class="training-ship-card">
+          <canvas id="training-ship-canvas" width="88" height="88"></canvas>
+          <div class="training-ship-meta">
+            <div id="training-ship-name" class="training-ship-name">ALPHA DART</div>
+            <div id="training-ship-passive" class="training-ship-passive">Nimble Frame</div>
+            <div id="training-ship-weapons" class="training-ship-weapons">⚡ PULSE CANNON • 🚀 SEEKER MISSILES</div>
+          </div>
+        </div>
+
+        <div class="shop-tip">
+          💡 Every stat lists its sources: <b>ship</b>, <b>upgrades</b>, <b>equipment</b>, and <b>drones</b>.
+          Tap a target below to enter the range and spawn it instantly.
+        </div>
+
+        <div class="training-actions">
+          <button id="btn-training-start" class="neon-btn primary-btn">▶ ENTER RANGE</button>
+        </div>
+
+        <div class="training-spawn-header">PRACTICE TARGETS</div>
+        <div class="training-spawn-grid" id="training-spawn-container">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="training-spawn-header">STAT BREAKDOWN</div>
+        <div class="training-stats" id="training-stats-container">
+          <!-- Populated by JS: one card per stat with itemized sources -->
         </div>
       </div>
 
