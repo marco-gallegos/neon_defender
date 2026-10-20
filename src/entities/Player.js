@@ -2,6 +2,7 @@
 import { Bullet } from './Bullet.js';
 import { Particle, FloatingText } from './Particle.js';
 import { SHIPS, UPGRADES, PRIMARY_WEAPONS, SECONDARY_WEAPONS } from '../systems/UpgradeSystem.js';
+import { computeBonuses } from '../systems/Equipment.js';
 import { audio } from '../engine/Audio.js';
 import { Renderer } from '../engine/Renderer.js';
 
@@ -13,6 +14,7 @@ export class Player {
 
     this.shipDef = SHIPS[saveState.equippedShip] || SHIPS.alpha_dart;
     this.upgrades = saveState.upgrades;
+    this.equipBonuses = computeBonuses(saveState.equippedEquipment, saveState.inventory);
 
     // Primary Weapon Setup (Switchable Main Gun)
     this.primaryId = saveState.equippedPrimary || 'plasma';
@@ -21,7 +23,7 @@ export class Player {
 
     // Secondary Weapon Setup
     this.secondaryId = saveState.equippedSecondary || 'seeker';
-    this.unlockedSecondaries = saveState.unlockedSecondaries || ['seeker', 'railgun', 'cluster'];
+    this.unlockedSecondaries = saveState.unlockedSecondaries || ['seeker'];
     this.secondaryUpgrades = saveState.secondaryUpgrades || { seeker: 1, railgun: 1, cluster: 1, vortex: 1 };
     this.refreshSecondaryStats();
     this.secondaryCooldown = 0;
@@ -63,8 +65,46 @@ export class Player {
     this.empCooldown = 0;
     this.empMaxCooldown = this.empData.cooldown;
 
-    // Wingman Drones (0 to 4)
-    this.droneCount = this.upgrades.drones || 0;
+    // Ship-Specific Passive Perk
+    this.damageReduction = 0;
+    this.pierceBonus = 0;
+    switch (this.shipDef.passiveId) {
+      case 'nimble': // ALPHA DART: smaller hitbox + stronger pickup magnet
+        this.radius = 15;
+        this.magnetRadius *= 1.15;
+        break;
+      case 'bulwark': // CYBER CUBE: heavy plating reduces all incoming damage
+        this.damageReduction = 0.12;
+        break;
+      case 'emberfire': // NEON PHOENIX: extra critical strike chance
+        this.critData = { ...this.critData, chance: Math.min(0.6, this.critData.chance + 0.08) };
+        break;
+      case 'voidrounds': // VOID SLICER: primary shots pierce an extra target
+        this.pierceBonus = 1;
+        break;
+      default:
+        break;
+    }
+
+    // --- Equipment bonuses (applied after base + ship stats) ---
+    const eq = this.equipBonuses;
+    this.luckMult = 1 + (eq.luck || 0);
+    this.moveSpeedMult = 1 + (eq.speed || 0);
+    this.scoreMult = 1 + (eq.scoreBonus || 0);
+    this.damageReduction = Math.min(0.7, (this.damageReduction || 0) + (eq.resistance || 0));
+    this.baseDamage *= (1 + (eq.damage || 0)) * (1 + (eq.droneBuff || 0));
+    this.maxShield = Math.round(this.maxShield * (1 + (eq.shieldBonus || 0)));
+    this.shield = this.maxShield;
+    this.retaliateDamage = eq.retaliate || 0;
+    this.retaliatePending = false;
+    this.extraBullets = eq.extraBullets || 0;
+    this.flameLevel = eq.flameLevel || 0;
+    this.skin = eq.skin || null;
+
+    // Wingman Drones (upgrade drones + equipment strike drones)
+    this.droneCount = Math.min(6, (this.upgrades.drones || 0) + (eq.droneAttack || 0));
+    this.guardDroneCount = Math.min(4, eq.droneGuard || 0);
+    this.shieldRegenRate += this.guardDroneCount * 1.5;
     this.droneAngle = 0;
     this.droneShootTimer = 0;
 
@@ -74,6 +114,7 @@ export class Player {
     this.invulnerableTimer = 1.5; // Spawn protection
     this.thrusterGlow = 0;
     this.isDead = false;
+    this.devGodMode = false; // Developer panel only (dev builds)
 
     // Audio / Visual triggers
     this.shieldHitEffect = 0;
@@ -87,14 +128,16 @@ export class Player {
   update(dt, input, bullets, particles, floatingTexts, enemies) {
     if (this.isDead) return;
 
+    const moveMult = this.moveSpeedMult || 1;
+
     // Smooth movement interpolation (lerp)
-    this.x += (this.targetX - this.x) * Math.min(1, 20 * dt);
-    this.y += (this.targetY - this.y) * Math.min(1, 20 * dt);
+    this.x += (this.targetX - this.x) * Math.min(1, 20 * moveMult * dt);
+    this.y += (this.targetY - this.y) * Math.min(1, 20 * moveMult * dt);
 
     // Keyboard movement offset if used
     const kb = input.getKeyboardMovement();
     if (kb.dx !== 0 || kb.dy !== 0) {
-      const kbSpeed = 380 * dt;
+      const kbSpeed = 380 * moveMult * dt;
       this.targetX += kb.dx * kbSpeed;
       this.targetY += kb.dy * kbSpeed;
       this.targetX = Math.max(this.radius, Math.min(this.canvasWidth - this.radius, this.targetX));
@@ -107,6 +150,27 @@ export class Player {
     if (this.invulnerableTimer > 0) this.invulnerableTimer -= dt;
     if (this.shieldHitEffect > 0) this.shieldHitEffect -= dt * 3;
     if (this.empCooldown > 0) this.empCooldown -= dt;
+
+    // Shield retaliation pulse (equipment): damage nearby foes when hit
+    if (this.retaliatePending) {
+      this.retaliatePending = false;
+      if (this.retaliateDamage > 0 && Array.isArray(enemies)) {
+        const pulseRadius = 125;
+        let hitAny = false;
+        for (const e of enemies) {
+          if (!e || e.dead) continue;
+          const d = Math.hypot(e.x - this.x, e.y - this.y);
+          if (d <= pulseRadius + (e.radius || 0) && typeof e.takeDamage === 'function') {
+            e.takeDamage(this.retaliateDamage, particles, floatingTexts);
+            hitAny = true;
+          }
+        }
+        particles.push(new Particle(this.x, this.y, 0, 0, '#00f0ff', 20, 0.5, 'ring'));
+        if (hitAny) {
+          floatingTexts.push(new FloatingText(this.x, this.y - 34, 'RETALIATE!', '#00f0ff', true));
+        }
+      }
+    }
 
     if (this.overdriveTimer > 0) {
       this.overdriveTimer -= dt;
@@ -136,7 +200,7 @@ export class Player {
         this.y + 16,
         (Math.random() - 0.5) * 15,
         70 + Math.random() * 40,
-        this.shipDef.color,
+        this.skin?.trail || this.shipDef.color,
         3.5, 0.25, 'spark'
       ));
     }
@@ -333,6 +397,8 @@ export class Player {
   fireWeapon(bullets, particles) {
     audio.playShoot(true);
 
+    const startIdx = bullets.length;
+    const shipShape = this.shipDef.bulletShape || null;
     const isCrit = Math.random() < this.critData.chance;
     const baseMult = (this.primaryDef.damageMult || 1.0) * (isCrit ? this.critData.mult : 1.0) * (this.overdriveTimer > 0 ? 1.5 : 1.0);
     const dmg = this.baseDamage * baseMult;
@@ -341,7 +407,7 @@ export class Player {
 
     if (gunType === 'laser') {
       // PHOTON LANCE: Continuous Piercing Beams cutting down enemy columns
-      const pierce = (this.primaryDef.pierce || 3) + Math.floor(this.weaponLevel / 2);
+      const pierce = (this.primaryDef.pierce || 3) + Math.floor(this.weaponLevel / 2) + this.pierceBonus;
       const bSpeed = -720;
       const opts = { isCrit, color: bulletColor, radius: 5, type: 'laser', pierce };
 
@@ -400,7 +466,7 @@ export class Player {
       if (this.weaponLevel >= 2) {
         // Center piercing core
         bullets.push(new Bullet(this.x, this.y - 16, 0, bSpeed * 1.05, dmg * 0.9, true, {
-          isCrit, color: '#ffffff', radius: 4.5, type: 'plasma'
+          isCrit, color: '#ffffff', radius: 4.5, type: 'plasma', pierce: 1 + this.pierceBonus
         }));
       }
       if (this.weaponLevel >= 3) {
@@ -419,7 +485,7 @@ export class Player {
     } else {
       // PULSE CANNON (Classic High Cadence Plasma)
       const bulletSpeed = -620;
-      const opts = { isCrit, color: bulletColor, radius: 5, type: 'plasma' };
+      const opts = { isCrit, color: bulletColor, radius: 5, type: 'plasma', pierce: 1 + this.pierceBonus };
 
       if (this.weaponLevel === 1) {
         bullets.push(new Bullet(this.x, this.y - 15, 0, bulletSpeed, dmg, true, opts));
@@ -444,6 +510,46 @@ export class Player {
           const vy = -Math.cos(rad) * 640;
           bullets.push(new Bullet(this.x, this.y - 14, vx, vy, dmg * 0.8, true, opts));
         });
+      }
+    }
+
+    // --- Equipment: Swarm Injector (extra mini-projectiles) ---
+    if (this.extraBullets > 0) {
+      const n = Math.min(2, this.extraBullets);
+      for (let i = 0; i < n; i++) {
+        const offset = (i - (n - 1) / 2) * 0.22;
+        const vx = Math.sin(offset) * 620 + (i === 0 ? -40 : 40);
+        const vy = -Math.cos(offset) * 620;
+        bullets.push(new Bullet(this.x + offset * 18, this.y - 8, vx, vy, dmg * 0.55, true, {
+          isCrit,
+          color: '#ffd166',
+          radius: 3.6,
+          type: 'plasma',
+          pierce: 1
+        }));
+      }
+    }
+
+    // --- Equipment: Incinerator Nozzle (short-range flamethrower) ---
+    if (this.flameLevel > 0) {
+      const flames = Math.min(3, this.flameLevel);
+      for (let i = 0; i < flames; i++) {
+        const offset = (i - (flames - 1) / 2) * 0.24;
+        bullets.push(new Bullet(this.x, this.y - 16, Math.sin(offset) * 260, -Math.cos(offset) * 380, dmg * 0.28, true, {
+          isCrit: false,
+          color: '#ff7700',
+          radius: 7 + this.flameLevel * 2,
+          type: 'flame',
+          life: 0.34 + this.flameLevel * 0.05,
+          pierce: 6
+        }));
+      }
+    }
+
+    // Stamp ship-specific silhouettes onto every primary projectile
+    if (shipShape) {
+      for (let i = startIdx; i < bullets.length; i++) {
+        bullets[i].shape = shipShape;
       }
     }
   }
@@ -495,6 +601,18 @@ export class Player {
 
   takeDamage(amount, particles, floatingTexts) {
     if (this.invulnerableTimer > 0 || this.isDead) return;
+    // Developer panel god mode (dev builds only) — ignore all incoming damage.
+    if (this.devGodMode) return;
+
+    // Ship passive damage mitigation (e.g. CYBER CUBE bulwark plating)
+    if (this.damageReduction > 0) {
+      amount *= (1 - this.damageReduction);
+    }
+
+    // Shield retaliation equipment triggers on hit
+    if (this.retaliateDamage > 0) {
+      this.retaliatePending = true;
+    }
 
     this.shieldRegenTimer = 0;
     this.shieldHitEffect = 1.0;
@@ -629,6 +747,43 @@ export class Player {
         ctx.fillRect(-1.5, -1.5, 3, 3);
         ctx.restore();
       }
+    }
+
+    // Draw Guard Drones (equipment) — counter-rotating shield orbs
+    if (this.guardDroneCount > 0) {
+      for (let i = 0; i < this.guardDroneCount; i++) {
+        const angle = -this.droneAngle * 0.8 + (i * Math.PI * 2) / this.guardDroneCount;
+        const dx = this.x + Math.cos(angle) * 48;
+        const dy = this.y + Math.sin(angle) * 48;
+
+        ctx.save();
+        ctx.translate(dx, dy);
+        ctx.fillStyle = '#060919';
+        ctx.strokeStyle = '#00aaff';
+        ctx.lineWidth = 1.8;
+        ctx.shadowColor = '#00aaff';
+        ctx.shadowBlur = 9;
+        ctx.beginPath();
+        ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // Equipment skin overlay gadget (orbiting themed emblem)
+    if (this.skin && this.skin.icon) {
+      const angle = this.droneAngle * 1.4;
+      const dx = this.x + Math.cos(angle) * 26;
+      const dy = this.y + Math.sin(angle) * 26;
+      ctx.save();
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = this.skin.accent || '#ffffff';
+      ctx.shadowBlur = 10;
+      ctx.fillText(this.skin.icon, dx, dy);
+      ctx.restore();
     }
   }
 

@@ -13,6 +13,7 @@ export class Bullet {
     this.color = options.color || (isPlayer ? '#00f0ff' : '#ff0055');
     this.radius = options.radius || (isPlayer ? 5 : 4);
     this.type = options.type || 'plasma'; // 'plasma', 'laser', 'missile', 'railgun', 'cluster', 'shrapnel', 'vortex', 'hazard'
+    this.shape = options.shape || null; // Ship-specific projectile silhouette
     this.homing = options.homing || false;
     this.life = options.life || 3.0;
     this.maxLife = this.life;
@@ -192,6 +193,142 @@ export class Bullet {
     }
   }
 
+  // Ship-specific projectile silhouettes (same stats, unique look per vessel)
+  drawShipShape(ctx, u) {
+    const r = u;
+    ctx.fillStyle = this.color;
+
+    switch (this.shape) {
+      case 'dart': {
+        ctx.beginPath();
+        ctx.moveTo(r * 2.2, 0);
+        ctx.lineTo(-r * 1.1, -r * 0.9);
+        ctx.lineTo(-r * 0.45, 0);
+        ctx.lineTo(-r * 1.1, r * 0.9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(r * 0.25, 0, r * 0.5, r * 0.32, 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'cube': {
+        ctx.beginPath();
+        ctx.rect(-r, -r, r * 2, r * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-r * 0.45, -r * 0.45, r * 0.9, r * 0.9);
+        break;
+      }
+      case 'phoenix': {
+        ctx.beginPath();
+        ctx.moveTo(r * 2.1, 0);
+        ctx.lineTo(r * 0.3, -r * 0.7);
+        ctx.lineTo(-r * 0.5, -r * 1.2);
+        ctx.lineTo(-r * 0.55, -r * 0.35);
+        ctx.lineTo(-r * 1.4, -r * 0.85);
+        ctx.lineTo(-r * 0.7, 0);
+        ctx.lineTo(-r * 1.4, r * 0.85);
+        ctx.lineTo(-r * 0.55, r * 0.35);
+        ctx.lineTo(-r * 0.5, r * 1.2);
+        ctx.lineTo(r * 0.3, r * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(r * 0.5, 0, r * 0.4, r * 0.25, 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'slicer': {
+        ctx.beginPath();
+        ctx.moveTo(r * 2.2, 0);
+        ctx.quadraticCurveTo(0, -r * 1.1, -r * 1.2, 0);
+        ctx.quadraticCurveTo(0, r * 1.1, r * 2.2, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(r * 1.6, 0);
+        ctx.quadraticCurveTo(0, -r * 0.5, -r * 0.7, 0);
+        ctx.stroke();
+        break;
+      }
+      case 'fang': {
+        ctx.beginPath();
+        ctx.moveTo(r * 2.1, 0);
+        ctx.lineTo(-r * 0.3, -r * 1.15);
+        ctx.lineTo(-r * 1.1, -r * 0.4);
+        ctx.lineTo(-r * 0.65, 0);
+        ctx.lineTo(-r * 1.1, r * 0.4);
+        ctx.lineTo(-r * 0.3, r * 1.15);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(r * 0.35, 0, r * 0.35, r * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'bat': {
+        ctx.beginPath();
+        ctx.moveTo(r * 1.9, 0);
+        ctx.lineTo(r * 0.2, -r * 0.7);
+        ctx.lineTo(-r * 0.3, -r * 0.25);
+        ctx.lineTo(-r * 1.5, -r * 1.1);
+        ctx.lineTo(-r * 0.9, 0);
+        ctx.lineTo(-r * 1.5, r * 1.1);
+        ctx.lineTo(-r * 0.3, r * 0.25);
+        ctx.lineTo(r * 0.2, r * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(r * 0.45, 0, r * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'scythe': {
+        ctx.beginPath();
+        ctx.moveTo(r * 1.4, -r * 0.2);
+        ctx.quadraticCurveTo(r * 0.1, -r * 1.5, -r * 1.3, -r * 0.5);
+        ctx.lineTo(-r * 0.6, -r * 0.1);
+        ctx.quadraticCurveTo(r * 0.1, -r * 0.7, r * 1.4, r * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(r * 1.1, 0);
+        ctx.quadraticCurveTo(0, -r * 0.7, -r * 0.9, -r * 0.35);
+        ctx.stroke();
+        break;
+      }
+      default: {
+        // Standard plasma capsule fallback
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r, r * 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 0.45, r * 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+    }
+  }
+
+  drawShipBullet(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(Math.atan2(this.vy, this.vx));
+    this.drawShipShape(ctx, this.radius * 0.95);
+    ctx.restore();
+  }
+
   draw(ctx) {
     ctx.save();
     ctx.shadowColor = this.color;
@@ -318,23 +455,15 @@ export class Bullet {
         ctx.lineTo(13, 0);
         ctx.stroke();
 
+        // Ship-specific energy core at the beam head
+        this.drawShipShape(ctx, this.radius * 0.8);
+
       } else if (this.type === 'spread') {
-        // High-velocity Kinetic Vulcan Pellets
+        // High-velocity Kinetic Vulcan Pellets (ship-shaped)
         const angle = Math.atan2(this.vy, this.vx);
         ctx.translate(this.x, this.y);
         ctx.rotate(angle);
-
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.moveTo(9, 0);
-        ctx.lineTo(-5, -4);
-        ctx.lineTo(-2, 0);
-        ctx.lineTo(-5, 4);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-2, -1.5, 4, 3);
+        this.drawShipShape(ctx, this.radius * 1.15);
 
       } else if (this.type === 'wave') {
         // Pulsing Sinusoidal Energy Ripple
@@ -347,22 +476,28 @@ export class Bullet {
         ctx.arc(0, 0, this.radius + 1.5, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = '#ffffff';
+        // Ship-specific core (kept aligned to travel direction)
+        ctx.rotate(Math.atan2(this.vy, this.vx) - this.animAngle);
+        this.drawShipShape(ctx, this.radius * 0.85);
+
+      } else if (this.type === 'flame') {
+        // Short-range incinerator plume (soft expanding fire blob)
+        const lifeFrac = Math.max(0, Math.min(1, this.life / (this.maxLife || 0.4)));
+        const grow = 1 + (1 - lifeFrac) * 0.8;
+        ctx.globalAlpha = 0.45 + lifeFrac * 0.55;
+        ctx.fillStyle = '#ff5500';
         ctx.beginPath();
-        ctx.arc(0, 0, this.radius * 0.5, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, this.radius * grow, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = '#ffcc00';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * grow * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
 
       } else {
-        // Standard elongated high-velocity laser capsule (Plasma)
-        ctx.beginPath();
-        ctx.ellipse(this.x, this.y, this.radius, this.radius * 2.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Inner glowing white core
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.ellipse(this.x, this.y, this.radius * 0.45, this.radius * 1.5, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // Standard high-velocity projectile — silhouette varies per ship
+        this.drawShipBullet(ctx);
       }
     } else {
       // Enemy Projectiles

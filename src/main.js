@@ -7,7 +7,9 @@ import { UIManager } from './ui/UI.js';
 import { Player } from './entities/Player.js';
 import { WaveManager } from './systems/WaveManager.js';
 import { FloatingText, Particle } from './entities/Particle.js';
-import { SECTORS } from './systems/UpgradeSystem.js';
+import { SECTORS, SECTOR_TRACKS, STAGE_TRACKS, ARENA_CHECKPOINT_INTERVAL, ARENA_MUSIC_INTERVAL } from './systems/UpgradeSystem.js';
+import { EquipmentItem, CrystalItem } from './entities/EquipmentDrop.js';
+import { rollEquipmentDrop, rollCrystalDrop } from './systems/Equipment.js';
 
 class Game {
   constructor() {
@@ -43,12 +45,24 @@ class Game {
 
     // Run Stats
     this.runShards = 0;
+    this.runCrystals = 0;
     this.runKills = 0;
     this.runScore = 0;
+
+    // Developer panel — populated only in dev builds (see initDevPanel).
+    this.devPanel = null;
 
     // Time Tracking
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this.loop(t));
+
+    // Developer panel — DEV BUILDS ONLY.
+    // `import.meta.env.DEV` is replaced with `false` by Vite in production,
+    // so this import expression is dropped and neither `devSetup.js` nor
+    // `DevPanel.js` is emitted into the shipped bundle.
+    if (import.meta.env.DEV) {
+      import('./ui/devSetup.js').then(m => m.initDevPanel(this));
+    }
   }
 
   handleResize() {
@@ -71,12 +85,17 @@ class Game {
     }
   }
 
-  startRun(mode = 'CAMPAIGN', sectorId = 1) {
+  startRun(mode = 'CAMPAIGN', sectorId = 1, startWave = 1) {
     this.currentMode = mode;
     this.currentSectorId = sectorId;
     this.runShards = 0;
+    this.runCrystals = 0;
     this.runKills = 0;
     this.runScore = 0;
+    // Reset arena music rotation so the first swap lands on the next boundary.
+    this._lastArenaMusicWave = 0;
+    // Training-range damage telemetry (DPS readout).
+    this.trainingStats = { damageDealt: 0, elapsed: 0, spawned: 0 };
 
     this.bullets = [];
     this.enemies = [];
@@ -87,8 +106,22 @@ class Game {
     const w = this.renderer.width;
     const h = this.renderer.height;
 
+    // Pick this run's stage soundtrack BEFORE spawning waves — the
+    // WaveManager may swap to the boss theme during construction.
+    this.stageTrack = this.pickStageTrack();
+    audio.playTrack(this.stageTrack);
+
     this.player = new Player(w, h, this.saveData);
-    this.waveManager = new WaveManager(w, h, mode, sectorId);
+    this.waveManager = new WaveManager(w, h, mode, sectorId, startWave);
+
+    // Resuming an arena checkpoint restores the weapon level banked at that
+    // point, so a deep resume keeps the power you actually earned.
+    if (mode === 'ARENA' && startWave > 1) {
+      const banked = Number(this.saveData.arenaStats?.weaponLevel);
+      if (Number.isFinite(banked) && banked > 0) {
+        this.player.weaponLevel = Math.min(5, Math.max(1, Math.round(banked)));
+      }
+    }
 
     this.timeScale = 1.0;
     if (this.ui?.bossBarWrap) {
@@ -98,9 +131,43 @@ class Game {
 
     this.state = 'PLAYING';
     this.ui.showScreen('hud');
+  }
 
-    if (this.saveData.settings.music) {
-      audio.startMusic();
+  // One stage theme per run: campaign = sector-matched, arena = random pick
+  // from the themes the player has unlocked by clearing campaign sectors.
+  pickStageTrack() {
+    if (this.currentMode === 'ARENA') {
+      return this.pickArenaTrack();
+    }
+    if (this.currentMode === 'TRAINING') {
+      // Calm menu loop — the range is a workshop, not a battle.
+      return 'menu';
+    }
+    return SECTOR_TRACKS[this.currentSectorId] || 'stage_jungle';
+  }
+
+  // Random stage theme from the unlocked pool (falls back to the default).
+  pickArenaTrack() {
+    const unlocked = Array.isArray(this.saveData.unlockedTracks) && this.saveData.unlockedTracks.length > 0
+      ? this.saveData.unlockedTracks.filter(t => STAGE_TRACKS.includes(t))
+      : [];
+    const pool = unlocked.length > 0 ? unlocked : STAGE_TRACKS.slice(0, 1);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // Swap the arena soundtrack every ARENA_MUSIC_INTERVAL waves (never mid-boss).
+  maybeRotateArenaMusic() {
+    if (this.currentMode !== 'ARENA' || !this.waveManager) return;
+    const wave = Number.isFinite(this.waveManager.currentWave) ? this.waveManager.currentWave : 1;
+    if (wave % ARENA_MUSIC_INTERVAL !== 0) return;
+    if (this._lastArenaMusicWave === wave) return;
+    this._lastArenaMusicWave = wave;
+    // Let the boss theme own boss waves; rotation resumes on the next regular wave.
+    if (this.waveManager.bossSpawned) return;
+    const next = this.pickArenaTrack();
+    if (next !== this.stageTrack) {
+      this.stageTrack = next;
+      audio.playTrack(next);
     }
   }
 
@@ -123,7 +190,7 @@ class Game {
 
   quitToMenu() {
     this.state = 'MENU';
-    audio.stopMusic();
+    audio.playTrack('menu');
     this.ui.renderMenuPreview();
     this.ui.showScreen('menu');
   }
@@ -135,12 +202,109 @@ class Game {
     const shipBonus = (this.player && this.player.shipDef && typeof this.player.shipDef.stats?.shardBonus === 'number')
       ? this.player.shipDef.stats.shardBonus
       : 1.0;
+    const luckMult = (this.player && Number.isFinite(this.player.luckMult) && this.player.luckMult > 0)
+      ? this.player.luckMult
+      : 1.0;
     const safeWaveMult = Number.isFinite(waveMult) && waveMult > 0 ? waveMult : 1.0;
     const safeShipBonus = Number.isFinite(shipBonus) && shipBonus > 0 ? shipBonus : 1.0;
-    return safeWaveMult * safeShipBonus;
+    // Global economy rebalance: enemy shard drops cut by 70% (0.3x).
+    const SHARD_DROP_SCALE = 0.3;
+    return safeWaveMult * safeShipBonus * luckMult * SHARD_DROP_SCALE;
+  }
+
+  // 0 (game start) .. 1 (endgame) — drives equipment tier weights.
+  getDropProgress() {    if (!this.waveManager) return 0;
+    if (this.currentMode === 'ARENA') {
+      return Math.max(0, Math.min(1, (this.waveManager.currentWave || 1) / 90));
+    }
+    const sectorCount = Math.max(1, SECTORS.length);
+    const sectorIdx = Math.max(0, (this.currentSectorId || 1) - 1);
+    const wave = this.waveManager.currentWave || 1;
+    const maxWaves = this.waveManager.maxWaves || 10;
+    const waveFrac = Math.max(0, Math.min(1, wave / maxWaves));
+    return Math.max(0, Math.min(1, (sectorIdx + waveFrac) / sectorCount));
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  TRAINING RANGE
+   * ------------------------------------------------------------------ */
+  // Accumulate damage dealt so the panel can show a live DPS figure.
+  recordTrainingDamage(amount) {
+    if (this.currentMode !== 'TRAINING' || !this.trainingStats) return;
+    const v = Number(amount);
+    if (Number.isFinite(v) && v > 0) this.trainingStats.damageDealt += v;
+  }
+
+  // Spawn a practice enemy by type key (no wave logic, no drops).
+  spawnTrainingEnemy(typeKey, hpMultiplier = 1) {
+    if (this.currentMode !== 'TRAINING' || !this.waveManager) return null;
+    const enemy = this.waveManager.spawnTrainingEnemy(typeKey, this.enemies, hpMultiplier);
+    if (this.trainingStats) this.trainingStats.spawned++;
+    return enemy;
+  }
+
+  spawnTrainingBoss(preset) {
+    if (this.currentMode !== 'TRAINING' || !this.waveManager) return null;
+    const p = preset || { name: 'PRACTICE TITAN', hp: 5000, color: '#ff007f' };
+    const boss = this.waveManager.spawnTrainingBoss(p.name, p.hp, p.color, this.enemies);
+    if (this.trainingStats) this.trainingStats.spawned++;
+    return boss;
+  }
+
+  // Remove every practice target and reset the damage counters.
+  clearTraining() {
+    this.enemies.length = 0;
+    this.bullets.length = 0;
+    if (this.waveManager) this.waveManager.clearTrainingBoss();
+    this.trainingStats = { damageDealt: 0, elapsed: 0, spawned: 0 };
+    if (this.ui?.bossBarWrap) {
+      this.ui.bossBarWrap.classList.add('hidden');
+      this.ui.bossBarWrap.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  rollEnemyDrops(entity, isBoss = false) {
+    // Practice targets never drop loot.
+    if (this.currentMode === 'TRAINING') return;
+    if (!entity) return;
+    const progress = this.getDropProgress();
+    const luckMult = (this.player && Number.isFinite(this.player.luckMult) && this.player.luckMult > 0)
+      ? this.player.luckMult
+      : 1.0;
+
+    const pushEquipment = (eq, ox = 0, oy = 0) => {
+      if (!eq) return;
+      this.items.push(new EquipmentItem(entity.x + ox, entity.y + oy, eq));
+    };
+
+    pushEquipment(rollEquipmentDrop({ progress, luckMult, isBoss }), 0, 0);
+    if (isBoss) {
+      // Bosses guarantee a second roll and skew toward higher tiers.
+      pushEquipment(rollEquipmentDrop({ progress, luckMult, isBoss: true }), 26, -18);
+    }
+
+    const crystalDrop = rollCrystalDrop({ progress, luckMult, isBoss });
+    if (crystalDrop) {
+      const amount = Math.max(1, Math.round(crystalDrop.amount || 1));
+      this.items.push(new CrystalItem(
+        entity.x + (Math.random() - 0.5) * 26,
+        entity.y + (Math.random() - 0.5) * 26,
+        amount
+      ));
+    }
   }
 
   handleGameOver(reason = 'HULL INTEGRITY COMPROMISED') {
+    // Training range has no stakes: no banking, no records, no game-over modal.
+    if (this.currentMode === 'TRAINING') {
+      this.player.hp = this.player.maxHp;
+      this.player.shield = this.player.maxShield;
+      this.player.isDead = false;
+      this.player.invulnerableTimer = 1.5;
+      this.clearTraining();
+      return;
+    }
+
     this.state = 'GAMEOVER';
     this.renderer.addShake(15, 0.5);
 
@@ -151,8 +315,16 @@ class Game {
       ? Math.max(0, Math.round(this.saveData.shards))
       : 0;
 
-    // Commit collected shards to persistent bank with strict validation
+    const safeRunCrystals = (typeof this.runCrystals === 'number' && Number.isFinite(this.runCrystals))
+      ? Math.max(0, Math.round(this.runCrystals))
+      : 0;
+    const currentCrystalBank = (typeof this.saveData.crystals === 'number' && Number.isFinite(this.saveData.crystals))
+      ? Math.max(0, Math.round(this.saveData.crystals))
+      : 0;
+
+    // Commit collected shards & crystals to persistent bank with strict validation
     this.saveData.shards = currentBank + safeRunShards;
+    this.saveData.crystals = currentCrystalBank + safeRunCrystals;
 
     // Save arena records
     if (this.currentMode === 'ARENA') {
@@ -162,17 +334,28 @@ class Game {
       }
       this.saveData.arenaStats.bestScore = Math.max(this.saveData.arenaStats.bestScore, Number(this.runScore) || 0);
       this.saveData.arenaStats.totalShardsEarned = (Number(this.saveData.arenaStats.totalShardsEarned) || 0) + safeRunShards;
+
+      // Unlock the highest checkpoint wave the player has cleared.
+      const clearedCheckpoint = Math.floor(currentWave / ARENA_CHECKPOINT_INTERVAL) * ARENA_CHECKPOINT_INTERVAL;
+      if (clearedCheckpoint > (Number(this.saveData.arenaStats.checkpoint) || 0)) {
+        this.saveData.arenaStats.checkpoint = clearedCheckpoint;
+        // Bank the weapon level reached at this checkpoint so resuming doesn't
+        // drop the player back to level 1 after a deep run.
+        this.saveData.arenaStats.weaponLevel = Math.min(5, Math.max(1,
+          Number(this.player?.weaponLevel) || 1));
+      }
     }
 
     Storage.save(this.saveData);
-    audio.stopMusic();
+    audio.playJingle('gameover');
 
     document.getElementById('gameover-reason').textContent = reason;
     this.ui.showGameOver(
       this.currentMode === 'ARENA' ? 'ENDLESS ARENA' : `SECTOR ${this.currentSectorId}`,
       this.waveManager.currentWave,
       this.runKills,
-      safeRunShards
+      safeRunShards,
+      safeRunCrystals
     );
   }
 
@@ -194,10 +377,29 @@ class Game {
     const totalEarned = safeRunShards + bonus;
     this.saveData.shards = currentBank + totalEarned;
 
+    const safeRunCrystals = (typeof this.runCrystals === 'number' && Number.isFinite(this.runCrystals))
+      ? Math.max(0, Math.round(this.runCrystals))
+      : 0;
+    const currentCrystalBank = (typeof this.saveData.crystals === 'number' && Number.isFinite(this.saveData.crystals))
+      ? Math.max(0, Math.round(this.saveData.crystals))
+      : 0;
+    this.saveData.crystals = currentCrystalBank + safeRunCrystals;
+
     // Unlock next sector
     const nextSectorId = this.currentSectorId + 1;
     if (this.saveData.sectors[nextSectorId]) {
       this.saveData.sectors[nextSectorId].unlocked = true;
+    }
+
+    // Clearing a sector unlocks its stage theme for Endless Arena.
+    const clearedTrack = SECTOR_TRACKS[this.currentSectorId];
+    let trackUnlocked = false;
+    if (clearedTrack) {
+      if (!Array.isArray(this.saveData.unlockedTracks)) this.saveData.unlockedTracks = [];
+      if (!this.saveData.unlockedTracks.includes(clearedTrack)) {
+        this.saveData.unlockedTracks.push(clearedTrack);
+        trackUnlocked = true;
+      }
     }
 
     // Star rating (1: clear, 2: >50% HP, 3: >80% HP)
@@ -211,8 +413,8 @@ class Game {
     }
 
     Storage.save(this.saveData);
-    audio.stopMusic();
-    this.ui.showVictory(sec, totalEarned, stars);
+    audio.playJingle('victory');
+    this.ui.showVictory(sec, totalEarned, stars, safeRunCrystals, trackUnlocked ? clearedTrack : null);
   }
 
   loop(currentTime) {
@@ -243,6 +445,9 @@ class Game {
     if (this.state === 'PLAYING') {
       this.updateGame(simDt);
     }
+
+    // Developer panel (dev builds only) — keeps god mode active.
+    this.devPanel?.tick();
 
     // Render pass
     this.renderer.clear();
@@ -280,6 +485,11 @@ class Game {
     const w = this.renderer.width;
     const h = this.renderer.height;
 
+    // Training range: advance the DPS clock.
+    if (this.currentMode === 'TRAINING' && this.trainingStats) {
+      this.trainingStats.elapsed += dt;
+    }
+
     // Feed touch / pointer target to player
     if (this.input.isPointerDown) {
       this.player.setTarget(this.input.targetX, this.input.targetY);
@@ -305,6 +515,9 @@ class Game {
       return;
     }
 
+    // Endless Arena: shuffle the soundtrack every few waves.
+    this.maybeRotateArenaMusic();
+
     // Update Boss if present
     if (this.waveManager.boss) {
       const boss = this.waveManager.boss;
@@ -314,8 +527,12 @@ class Game {
         boss.hasLooted = true;
         this.renderer.addShake(18, 0.6);
         boss.onDestroy(this.particles, this.items, this.getLootMultiplier());
+        this.rollEnemyDrops(boss, true);
         this.runKills += 1;
         this.runScore += 2500;
+        // Boss down — drop back into the stage theme
+        // (campaign plays the victory jingle moments later anyway)
+        audio.playTrack(this.stageTrack);
       }
     }
 
@@ -327,11 +544,12 @@ class Game {
       // Check enemy death
       if (enemy.dead) {
         enemy.onDestroy(this.particles, this.items, this.getLootMultiplier());
+        this.rollEnemyDrops(enemy, false);
         if (typeof this.player.onEnemyKilled === 'function') {
           this.player.onEnemyKilled(enemy, this.floatingTexts);
         }
         this.runKills += 1;
-        this.runScore += (Number(enemy.score) || 50);
+        this.runScore += (Number(enemy.score) || 50) * (this.player.scoreMult || 1);
         this.enemies.splice(i, 1);
         continue;
       }
@@ -393,6 +611,7 @@ class Game {
           const d = Math.hypot(b.x - boss.x, b.y - boss.y);
           if (d < b.radius + boss.radius) {
             boss.takeDamage(b.damage, this.particles, this.floatingTexts);
+            this.recordTrainingDamage(b.damage);
             hit = true;
           }
         }
@@ -404,6 +623,7 @@ class Game {
             const d = Math.hypot(b.x - enemy.x, b.y - enemy.y);
             if (d < b.radius + enemy.radius) {
               enemy.takeDamage(b.damage, this.particles, this.floatingTexts);
+              this.recordTrainingDamage(b.damage);
               hit = true;
               break;
             }
@@ -431,12 +651,11 @@ class Game {
       }
     }
 
-    // Update Collectibles (Shards & Power-ups)
+    // Update Collectibles (Shards, Crystals, Equipment & Power-ups)
     for (let i = this.items.length - 1; i >= 0; i--) {
       const item = this.items[i];
 
-      if (item.isShard) {
-        // Shard item
+      if (item.isShard || item.isCrystal || item.isEquipment) {
         const alive = item.update(dt, this.player.x, this.player.y, this.player.magnetRadius);
         if (!alive || item.y > h + 40) {
           this.items.splice(i, 1);
@@ -445,13 +664,29 @@ class Game {
 
         // Collection radius
         const d = Math.hypot(item.x - this.player.x, item.y - this.player.y);
-        if (d < item.size + this.player.radius + 6) {
-          audio.playShard();
-          const shardVal = (typeof item.value === 'number' && Number.isFinite(item.value) && item.value > 0)
-            ? Math.round(item.value)
-            : 1;
-          this.runShards = (Number.isFinite(this.runShards) ? this.runShards : 0) + shardVal;
-          this.floatingTexts.push(new FloatingText(item.x, item.y - 12, `+${shardVal}`, '#ffe600'));
+        if (d < item.size + this.player.radius + 8) {
+          if (item.isShard) {
+            audio.playShard();
+            const shardVal = (typeof item.value === 'number' && Number.isFinite(item.value) && item.value > 0)
+              ? Math.round(item.value)
+              : 1;
+            this.runShards = (Number.isFinite(this.runShards) ? this.runShards : 0) + shardVal;
+            this.floatingTexts.push(new FloatingText(item.x, item.y - 12, `+${shardVal}`, '#ffe600'));
+          } else if (item.isCrystal) {
+            audio.playShard();
+            const crystalVal = Math.max(1, Math.round(item.amount || 1));
+            this.runCrystals += crystalVal;
+            this.floatingTexts.push(new FloatingText(item.x, item.y - 12, `+${crystalVal} ◆◆`, '#c77dff', true));
+          } else if (item.isEquipment) {
+            audio.playPowerup();
+            const eq = item.equipment;
+            if (eq && Array.isArray(this.saveData.inventory) && !this.saveData.inventory.some(x => x && x.id === eq.id)) {
+              this.saveData.inventory.push(eq);
+              Storage.save(this.saveData);
+            }
+            const color = item.meta?.color || '#ffb300';
+            this.floatingTexts.push(new FloatingText(item.x, item.y - 16, `${item.tier} · ${eq?.shortName || 'GEAR'}`, color, true));
+          }
           this.items.splice(i, 1);
           continue;
         }
@@ -487,7 +722,7 @@ class Game {
     }
 
     // Update UI HUD values
-    this.ui.updateHud(this.player, this.waveManager, this.runShards);
+    this.ui.updateHud(this.player, this.waveManager, this.runShards, this.runCrystals);
   }
 
   renderGame() {

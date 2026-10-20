@@ -231,9 +231,37 @@ h1, h2, h3 {
   text-shadow: 0 0 8px var(--neon-yellow);
 }
 
+.menu-ship-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mstat {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  color: #cfe6ff;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.mstat b {
+  color: var(--neon-cyan);
+  font-weight: 900;
+  margin-right: 3px;
+}
+
 .currency-bar {
   display: flex;
   justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
   width: 100%;
 }
 
@@ -266,6 +294,19 @@ h1, h2, h3 {
   text-shadow: 0 0 6px var(--neon-cyan);
 }
 
+.crystal-pill {
+  border-color: #c77dff;
+  color: #c77dff;
+  box-shadow: 0 0 10px rgba(199, 125, 255, 0.25);
+}
+
+.crystal-icon {
+  font-size: 0.9rem;
+  color: #c77dff;
+  text-shadow: 0 0 8px #c77dff;
+  letter-spacing: -2px;
+}
+
 .shard-label {
   font-size: 0.7rem;
   color: #a0a8cc;
@@ -288,6 +329,39 @@ h1, h2, h3 {
 
 .button-row button {
   flex: 1;
+}
+
+/* Two hero mode buttons side by side (home screen) */
+.button-row.mode-row {
+  gap: 8px;
+  align-items: stretch;
+}
+
+.button-row.mode-row button {
+  font-size: 0.82rem;
+  padding: 14px 6px;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.button-row.mode-row .hot-badge {
+  font-size: 0.55rem;
+  padding: 2px 5px;
+}
+
+/* Three compact secondary buttons in one row (home screen) */
+.button-row.three-up {
+  gap: 6px;
+}
+
+.button-row.three-up button {
+  font-size: 0.78rem;
+  padding: 11px 6px;
+  letter-spacing: 0.5px;
 }
 
 /* Neon Buttons */
@@ -383,10 +457,13 @@ h1, h2, h3 {
 }
 
 .hud-top {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: flex-start;
   width: 100%;
+  /* Reserve room for the pinned corner control (pause) */
+  padding-right: 52px;
 }
 
 .hud-left {
@@ -401,6 +478,31 @@ h1, h2, h3 {
   gap: 6px;
   font-family: var(--font-display);
   font-size: 0.7rem;
+}
+
+.hud-ship-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.hstat {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.4px;
+  color: #cfe6ff;
+  background: rgba(8, 12, 28, 0.72);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.hstat b {
+  color: var(--neon-cyan);
+  font-weight: 900;
+  margin-right: 3px;
 }
 
 .bar-bg {
@@ -429,6 +531,10 @@ h1, h2, h3 {
 }
 
 .hud-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
   text-align: center;
 }
 
@@ -446,11 +552,71 @@ h1, h2, h3 {
   opacity: 0.85;
 }
 
-.hud-right {
+/* Pinned top-right corner controls — own layer, so HUD content
+   (bars, badges, currency pills) can never push pause off-screen */
+.hud-corner {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 10px) + 4px);
+  right: 12px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  z-index: 40;
   pointer-events: auto;
+}
+
+.icon-btn.pause-btn {
+  width: 44px; /* comfortable touch target on phones */
+  height: 44px;
+  font-size: 1.3rem;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+}
+
+.icon-btn.currency-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+
+.icon-btn.currency-btn.active {
+  background: rgba(255, 230, 0, 0.15);
+  border-color: var(--neon-yellow);
+  color: var(--neon-yellow);
+}
+
+.currency-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: flex-start; /* hug the pills instead of stretching */
+  gap: 6px;
+  background: rgba(8, 12, 28, 0.72);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 12px;
+  padding: 6px;
+}
+
+/* Brief pickup flash when counters are hidden (see UI.flashHudCurrency) */
+@keyframes currencyFlash {
+  0% { opacity: 0; transform: translateY(-6px) scale(0.9); }
+  15% { opacity: 1; transform: translateY(0) scale(1.04); }
+  25% { transform: scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+.currency-group.flash {
+  animation: currencyFlash 1.4s ease forwards;
+}
+
+.pause-loot {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
 .icon-btn {
@@ -708,6 +874,20 @@ h1, h2, h3 {
   color: #9aa5c4;
 }
 
+.sector-threat-row {
+  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  color: #ff7700;
+}
+
+.sector-threat {
+  color: var(--neon-magenta);
+  text-shadow: 0 0 6px var(--neon-magenta);
+  letter-spacing: 2px;
+}
+
 .sector-stars {
   color: var(--neon-yellow);
   font-size: 0.9rem;
@@ -764,6 +944,199 @@ h1, h2, h3 {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 90px;
+}
+
+/* ================= ARSENAL (EQUIPMENT) ================= */
+.arsenal-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.arsenal-tabs .shop-tab {
+  flex: 1 1 30%;
+  font-size: 0.72rem;
+  padding: 8px 4px;
+}
+
+.arsenal-slots {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.arsenal-slot {
+  flex: 1 1 90px;
+  min-height: 84px;
+  border-radius: 12px;
+  border: 1.5px dashed rgba(0, 240, 255, 0.3);
+  background: rgba(10, 14, 32, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 6px;
+  text-align: center;
+}
+
+.arsenal-slot.filled {
+  border-style: solid;
+  background: rgba(14, 18, 42, 0.95);
+  box-shadow: inset 0 0 16px rgba(0, 240, 255, 0.12);
+}
+
+.arsenal-slot-tier {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.arsenal-slot-icon { font-size: 1.3rem; }
+.arsenal-slot-name {
+  font-size: 0.65rem;
+  color: #cfd8f5;
+  font-family: var(--font-display);
+  letter-spacing: 0.5px;
+}
+.arsenal-slot-empty {
+  font-size: 0.7rem;
+  color: #6a749b;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+.arsenal-slot-empty span { color: #454e70; font-size: 0.62rem; }
+
+.arsenal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 90px;
+}
+
+.arsenal-empty-msg {
+  text-align: center;
+  color: #8b95bb;
+  font-size: 0.85rem;
+  padding: 30px 12px;
+  line-height: 1.5;
+}
+
+.equip-card {
+  background: var(--dark-panel);
+  border: 1.5px solid rgba(0, 240, 255, 0.25);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.equip-card.equipped {
+  box-shadow: 0 0 14px rgba(57, 255, 20, 0.18);
+}
+
+.equip-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.equip-tier-badge {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.9rem;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.equip-icon { font-size: 1.3rem; }
+.equip-title {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  color: #fff;
+  line-height: 1.2;
+}
+.equip-sub {
+  font-size: 0.68rem;
+  color: var(--neon-cyan);
+  letter-spacing: 0.8px;
+}
+
+.equip-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.equip-effect {
+  font-size: 0.72rem;
+  font-family: var(--font-display);
+  color: #d8e4ff;
+  background: rgba(0, 240, 255, 0.09);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.equip-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.equip-equipped-tag {
+  color: var(--neon-lime);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  margin-right: auto;
+}
+
+.equip-full-tag {
+  color: #ffb300;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  margin-right: auto;
+}
+
+/* Upgrade / merge affordances */
+.upgrade-btn {
+  border-color: rgba(0, 240, 255, 0.6);
+}
+
+.merge-btn {
+  border-color: #ff2fb0;
+  color: #ff2fb0;
+  box-shadow: 0 0 10px rgba(255, 47, 176, 0.3);
+}
+
+.mini-btn.disabled-look {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.equip-merge-hint {
+  font-size: 0.66rem;
+  color: #7d86a8;
+  font-family: var(--font-display);
+  letter-spacing: 0.3px;
+  margin-right: auto;
+  align-self: center;
 }
 
 /* Secondary Weapon Arsenal Cards */
@@ -1139,6 +1512,20 @@ h1, h2, h3 {
   font-size: 1.1rem;
 }
 
+/* Arena checkpoint / new-track announcements */
+.stat-row.checkpoint-row {
+  border-top: 1px dashed rgba(57, 255, 20, 0.35);
+  padding-top: 8px;
+  margin-top: 4px;
+  color: var(--neon-lime);
+  font-weight: 700;
+}
+
+.stat-row.checkpoint-row .stat-val {
+  color: var(--neon-lime);
+  font-size: 1rem;
+}
+
 .stars-row {
   display: flex;
   justify-content: center;
@@ -1154,4 +1541,502 @@ h1, h2, h3 {
   flex-direction: column;
   gap: 10px;
   width: 100%;
+}
+
+/* ================= RESPONSIVE COMPACTION ================= */
+/* Edge 30 Pro & similar tall phones (~20:9) — vertical space is the constraint. */
+@media (max-height: 780px) {
+  #screen-main-menu {
+    padding-top: 14px;
+    padding-bottom: 14px;
+    justify-content: center;
+    gap: 10px;
+  }
+  .title-container .neon-badge { font-size: 0.64rem; padding: 2px 8px; }
+  .game-title { font-size: 1.9rem; margin-top: 2px; }
+  .tagline { font-size: 0.72rem; margin-top: 3px; }
+  .menu-ship-preview { margin: 4px 0; }
+  #shipPreviewCanvas {
+    width: 104px;
+    height: 104px;
+  }
+  .ship-name { font-size: 0.95rem; margin-top: 5px; }
+  .menu-ship-stats { margin-top: 5px; }
+  .mstat { font-size: 0.64rem; padding: 2px 6px; }
+  .currency-pill.large { padding: 5px 12px; font-size: 0.95rem; }
+  .currency-bar { gap: 8px; }
+  .menu-actions { gap: 8px; }
+  .primary-btn, .arena-btn { font-size: 0.95rem; padding: 11px 16px; }
+  .button-row.three-up button { font-size: 0.72rem; padding: 9px 4px; }
+  .mini-btn { font-size: 0.76rem; padding: 7px 12px; }
+}
+
+@media (max-height: 640px) {
+  .game-title { font-size: 1.6rem; }
+  .tagline { display: none; }
+  #shipPreviewCanvas { width: 84px; height: 84px; }
+  .menu-ship-stats { display: none; }
+  .primary-btn, .arena-btn { font-size: 0.88rem; padding: 9px 14px; }
+  .menu-actions { gap: 6px; }
+  .currency-pill.large { font-size: 0.85rem; padding: 4px 10px; }
+}
+
+/* Narrow screens: keep the three-up row legible */
+@media (max-width: 360px) {
+  .button-row.three-up button {
+    font-size: 0.68rem;
+    letter-spacing: 0;
+  }
+}
+
+/* Phone-width HUD compaction (Edge 30 Pro ≈ 393px CSS wide):
+   shrink the bars so the left column clears the centered sector badge. */
+@media (max-width: 520px) {
+  .bar-container { font-size: 0.62rem; }
+  .bar-bg { width: 64px; }
+  .hud-badge { font-size: 0.78rem; }
+  .hud-sub { font-size: 0.7rem; }
+  .hud-top { padding-right: 50px; }
+  .hstat { font-size: 0.58rem; padding: 2px 5px; }
+  /* Centered badge would collide with the bars on narrow phones —
+     dock it beside the pause button instead (18px gap, no text length risk). */
+  .hud-center {
+    left: auto;
+    right: 62px;
+    top: 2px;
+    transform: none;
+    text-align: right;
+  }
+}
+
+/* ================= TRAINING RANGE ================= */
+/* In-run spawn panel (HUD). Anchored under the pause button so it never
+   covers the ship or the bottom weapon controls. */
+.hud-training-panel {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 10px) + 56px);
+  right: 12px;
+  width: min(190px, 58vw);
+  z-index: 38;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.training-panel-toggle {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  letter-spacing: 0.5px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 0, 127, 0.55);
+  background: rgba(20, 8, 32, 0.92);
+  color: var(--neon-magenta);
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255, 0, 127, 0.3);
+}
+
+.hud-training-controls {
+  width: 100%;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(10, 6, 24, 0.94);
+  border: 1px solid rgba(255, 0, 127, 0.4);
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  box-shadow: 0 0 18px rgba(255, 0, 127, 0.18);
+}
+
+/* Collapsed state hides the button list but keeps the toggle visible. */
+.hud-training-panel.collapsed .hud-training-controls {
+  display: none;
+}
+
+.hud-training-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hud-training-grid .training-spawn-btn {
+  padding: 6px 8px;
+  font-size: 0.62rem;
+  gap: 6px;
+}
+
+.hud-training-grid .training-spawn-btn.boss-spawn {
+  grid-column: auto;
+}
+
+.hud-training-grid .spawn-hp {
+  font-size: 0.55rem;
+}
+
+.training-panel-clear {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  padding: 7px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(57, 255, 20, 0.45);
+  background: rgba(8, 26, 10, 0.9);
+  color: var(--neon-lime);
+  cursor: pointer;
+}
+
+.training-ship-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: rgba(12, 16, 38, 0.8);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 12px;
+}
+
+#training-ship-canvas {
+  filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.5));
+  flex-shrink: 0;
+}
+
+.training-ship-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.training-ship-name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 8px var(--neon-yellow);
+}
+
+.training-ship-passive {
+  font-size: 0.76rem;
+  color: var(--neon-lime);
+}
+
+.training-ship-weapons {
+  font-size: 0.72rem;
+  color: #a0a8cc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.training-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-detail-card {
+  background: rgba(10, 14, 34, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.stat-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.stat-detail-title {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.5px;
+  color: var(--neon-cyan);
+}
+
+.stat-detail-total {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.stat-detail-total small {
+  font-size: 0.62rem;
+  color: #8892b0;
+  font-weight: 400;
+}
+
+.stat-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-source-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.76rem;
+  padding: 2px 0;
+}
+
+.source-label {
+  color: #cfe6ff;
+  flex-shrink: 0;
+}
+
+.source-detail {
+  color: #6f7a9c;
+  font-size: 0.66rem;
+}
+
+.source-value {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.source-value.zero {
+  color: #5c6480;
+  font-weight: 400;
+}
+
+/* Colour-code each contribution source */
+.kind-ship .source-label { color: #c9a6ff; }
+.kind-ship .source-value { color: #c9a6ff; }
+.kind-upgrade .source-label { color: #8fe6ff; }
+.kind-upgrade .source-value { color: #8fe6ff; }
+.kind-equipment .source-label { color: #9dff7a; }
+.kind-equipment .source-value { color: #9dff7a; }
+.kind-drone .source-label { color: #ffb066; }
+.kind-drone .source-value { color: #ffb066; }
+.kind-total .source-label { color: var(--neon-yellow); font-weight: 700; }
+.kind-total .source-value { color: var(--neon-yellow); }
+
+.stat-formula {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  color: #7d86a8;
+}
+
+.stat-extra {
+  margin-top: 5px;
+  font-size: 0.72rem;
+  color: #a0a8cc;
+}
+
+.stat-extra b { color: #fff; }
+
+/* Contribution bar */
+.contrib-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.contrib-seg { height: 100%; }
+
+.contrib-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.contrib-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  color: #8892b0;
+}
+
+.contrib-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Spawn controls */
+.training-spawn-header {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  color: var(--neon-magenta);
+  margin: 16px 0 8px;
+}
+
+.training-spawn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 7px;
+}
+
+.training-spawn-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  background: rgba(14, 18, 40, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: #dfe6f5;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.training-spawn-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.training-spawn-btn.boss-spawn {
+  grid-column: 1 / -1;
+  border-color: var(--neon-magenta);
+  box-shadow: inset 0 0 14px rgba(255, 0, 127, 0.12);
+}
+
+.spawn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.spawn-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spawn-hp {
+  color: #8892b0;
+  font-size: 0.62rem;
+  flex-shrink: 0;
+}
+
+.training-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 12px 0 4px;
+}
+
+/* The "STAT BREAKDOWN" header needs extra top space after the spawn grid. */
+.training-spawn-grid + .training-spawn-header {
+  margin-top: 20px;
+}
+
+@media (max-height: 780px) {
+  #training-ship-canvas { width: 68px; height: 68px; }
+  .training-ship-name { font-size: 1rem; }
+  .stat-detail-total { font-size: 1rem; }
+  .training-spawn-grid { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
+}
+
+/* ================= SAVE TRANSFER ================= */
+.transfer-summary {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 9px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.transfer-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.transfer-row .neon-btn {
+  flex: 1;
+  font-size: 0.68rem;
+  padding: 10px 5px;
+  letter-spacing: 0.4px;
+}
+
+.transfer-textarea {
+  width: 100%;
+  min-height: 88px;
+  max-height: 190px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6rem;
+  line-height: 1.45;
+  color: #b9e6ff;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 240, 255, 0.28);
+  border-radius: 8px;
+  padding: 8px 9px;
+  outline: none;
+  margin-bottom: 8px;
+}
+
+.transfer-textarea:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.transfer-divider {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0 10px;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 1.5px;
+  color: var(--neon-magenta);
+}
+
+.transfer-divider::before,
+.transfer-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 0, 127, 0.45), transparent);
+}
+
+.transfer-status {
+  font-size: 0.68rem;
+  line-height: 1.5;
+  min-height: 1em;
+  padding: 0 2px;
+  color: #8f99bd;
+}
+
+.transfer-status.ok { color: var(--neon-lime); }
+.transfer-status.warn { color: var(--neon-yellow); }
+.transfer-status.error { color: #ff8fa8; }
+
+.neon-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
 }
