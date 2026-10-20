@@ -2,6 +2,8 @@
 
 A high-octane, neon vector shoot 'em up game optimized for **cellphones (touch controls)** and desktop browsers. Built with responsive HTML5 Canvas and procedural Web Audio chiptune synthesis, with **zero pay-to-win mechanics**.
 
+(play it)[https://marco-gallegos.github.io/neon_defender/]
+
 ---
 
 ## 🚀 Key Highlights & Features
