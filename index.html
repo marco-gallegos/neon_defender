@@ -394,6 +394,41 @@
             </p>
           </div>
 
+          <div class="settings-group">
+            <h3>SAVE TRANSFER</h3>
+            <p class="guide-text">
+              Move your progress between phones, computers or browsers. Export produces a plain
+              <b>JSON</b> file you can copy, save, email or share. Paste it back on the other
+              device to restore everything — shards, crystals, ships, gear and arena records.
+            </p>
+
+            <div class="transfer-summary" id="transfer-summary">—</div>
+
+            <div class="transfer-row">
+              <button id="btn-export-save" class="neon-btn primary-btn">📤 EXPORT SAVE</button>
+              <button id="btn-copy-save" class="neon-btn secondary-btn" disabled>📋 COPY</button>
+            </div>
+            <div class="transfer-row">
+              <button id="btn-share-save" class="neon-btn secondary-btn hidden">📤 SHARE</button>
+              <button id="btn-download-save" class="neon-btn secondary-btn" disabled>⬇️ DOWNLOAD .JSON</button>
+            </div>
+
+            <textarea id="save-export-text" class="transfer-textarea" readonly
+              placeholder="Press EXPORT SAVE to generate your save file…"></textarea>
+
+            <div class="transfer-divider"><span>IMPORT</span></div>
+
+            <textarea id="save-import-text" class="transfer-textarea"
+              placeholder="Paste your exported save JSON here…"></textarea>
+            <div class="transfer-row">
+              <button id="btn-paste-import" class="neon-btn secondary-btn">📋 PASTE</button>
+              <button id="btn-file-import" class="neon-btn secondary-btn">📁 OPEN FILE</button>
+              <button id="btn-do-import" class="neon-btn primary-btn">⬆️ IMPORT</button>
+            </div>
+            <input type="file" id="save-import-file" accept="application/json,.json" class="hidden" />
+            <div class="transfer-status" id="transfer-status"></div>
+          </div>
+
           <div class="settings-group danger-zone">
             <button id="btn-reset-data" class="neon-btn danger-btn">⚠️ RESET SAVE DATA</button>
           </div>

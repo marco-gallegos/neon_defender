@@ -169,6 +169,62 @@ A no-stakes sandbox for inspecting build power. Entered from the main menu (**�
 - **No stakes:** `rollEnemyDrops` early-returns in TRAINING (no loot), and `handleGameOver`
   restores hull/shield instead of ending the run — you cannot lose progress in the range.
 
+## 8d. Developer Panel (dev builds only)
+A developer-only overlay for testing. It is **never present in production**.
+
+- **Gating:** `main.js` loads it through `import('./ui/devSetup.js')` inside an
+  `if (import.meta.env.DEV)` block. Vite rewrites that flag to `false` for production builds, so
+  the import expression is dropped and **neither `devSetup.js` nor `DevPanel.js` is emitted into
+  `dist/` at all** (verified: the production bundle contains zero dev strings, and the build
+  transforms 20 modules instead of 22). The panel builds its own DOM in JS, so `index.html`
+  carries no dev markup.
+- **Entry points:** the **🛠 DEV PANEL** button injected into the main menu, or the **F2** key
+  (`ESC` closes it).
+- **Tabs:**
+  - **BESTIARY** — searchable list of all 13 enemy archetypes and all 10 boss archetypes with
+    live stats (HP / speed / score / shard value / radius for enemies; radius / speed / drift /
+    minion count / home sector for bosses). `SPAWN` drops that enemy or boss into the Training
+    Range immediately.
+  - **CURRENCY** — grant shards (+100 / +1k / +10k / +100k) and nano crystals (+1 / +10 / +100 /
+    +1k), plus a custom amount that grants both. Grants are written through `Storage.save()`.
+  - **UTIL** — grant equipment (pick category + tier), unlock all ships / sectors / tracks /
+    secondaries, max every upgrade branch, jump the arena checkpoint to wave 50, god mode, full
+    heal, kill boss, kill all enemies, jump to the Training Range, spawn a boss, and
+    export / import / reset the save file.
+- **🎵 SONGS (top bar):** opens a soundtrack preview that replaces the tabbed body. The list is
+  derived from the sector→theme map (`SECTOR_TRACKS`), so it always shows the campaign songs a
+  sector actually plays — one row per theme with its title, id, BPM and the sectors that use it —
+  followed by the menu and boss themes. `▶` loops a theme instantly, `⏹ STOP` silences it and
+  `↺ RESTORE RUN THEME` hands the music back to the run (the boss theme is restored while a boss
+  is alive). If music was muted in Options, previewing turns the synth back on. Closing the panel
+  always restores the game's own theme, so a dev song never keeps playing over a run.
+- **God mode:** sets `player.devGodMode`, which `Player.takeDamage()` honours by ignoring all
+  incoming damage; the panel's `tick()` (called from the game loop) keeps hull and shield full.
+
+## 8e. Save Transfer (player-facing, all builds)
+Move a save between phones, computers or browsers. Implemented in `src/engine/SaveTransfer.js`
+and surfaced in **Options → SAVE TRANSFER** (`UIManager.setupSaveTransfer()`).
+- **Format:** a self-describing JSON envelope —
+  ```json
+  { "format": "neon-defender-save", "version": 1, "savedAt": "2026-10-19T18:00:00.000Z",
+    "game": "Neon Defender", "data": { ...the save... } }
+  ```
+  `serializeSave()` writes it pretty-printed so it is readable and diffable.
+- **Import is forgiving but safe:** `parseSave()` accepts the envelope, a **bare save object**
+  (older exports), or an unknown future format that still nests under `data`. Whatever arrives is
+  pushed through `sanitizeSaveData()` — the *same* validation gate `Storage.load()` uses — so an
+  import can never introduce NaN, unknown shapes or dangling equipment references into the
+  running game. Non-JSON input is rejected with a readable error.
+- **Transfer paths:** 📋 **COPY** (Clipboard API with an `execCommand` fallback for
+  non-secure contexts), ⬇️ **DOWNLOAD .JSON** (Blob + anchor; filename carries the date and shard
+  count), 📤 **SHARE** (native `navigator.share`, only offered where supported), 📋 **PASTE**
+  (reads the clipboard into the import box), 📁 **OPEN FILE** (`<input type="file">` + FileReader).
+- **Safety:** the import shows a one-line summary of the incoming save and asks for confirmation
+  before replacing the current progress; a cancelled import leaves everything untouched. On
+  success the game reloads so every system re-reads the new save.
+- **Shared format:** the dev-only Developer Panel reuses `serializeSave()` / `parseSave()`, so
+  dev exports and player exports are interchangeable.
+
 ## 9. Equipment & crystals (working tree — Phases 1–3)
 Implemented in `src/systems/Equipment.js` (+ `src/entities/EquipmentDrop.js`, `UI.js`, `Storage.js`).
 - **Tiers:** `C → B → A → S`, plus **`S+`** — obtainable **only** by fusing two S items
@@ -214,6 +270,9 @@ ignored). Persisted: **shards, crystals, inventory, equippedEquipment**, equippe
 ships, primaries/secondaries + secondary levels, upgrades, sectors, unlocked arena tracks,
 arena stats (incl. `checkpoint` and the banked `weaponLevel`), audio settings.
 Default starting shards = **0**.
+
+`sanitizeSaveData(parsed)` is the **single validation gate**, exported and shared by
+`Storage.load()` and the save-import path (§8e) so both produce identical results.
 
 ## 14. Controls
 Mobile: drag to glide (finger offset ~45 px), auto-fire, tap EMP/secondary.

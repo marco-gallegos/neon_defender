@@ -20,6 +20,12 @@ A high-octane, neon vector shoot 'em up game optimized for **cellphones (touch c
   - Debris bursts, shockwave rings, floating arcade damage counters, and chromatic impact shakes.
   - Built-in procedural Web Audio chiptune synth with a **9-track original soundtrack** in the style of the classics: Metal Slug boss marches, Contra jungle runs, Castlevania gallops, Streets of Rage grooves, Mega Man industrial energy and a Sonic-style menu theme — with dynamic switches (stage theme per sector, Gradius-style warning sting + march on boss spawn, victory fanfare, game-over dirge) plus punchy SFX (laser, bass drops, shield deflections, powerup fanfares). Zero audio asset loading lag! See [MUSIC.md](MUSIC.md) for the engine guide and track list.
 
+- **💾 Save Transfer — take your progress with you**:
+  - **Options → SAVE TRANSFER** lets you move your save between phones, computers or browsers.
+  - Export produces a plain, human-readable **JSON** file you can **copy**, **download**, or **share** (native share sheet on mobile).
+  - Import accepts a **paste** or an **.json file**, and restores shards, crystals, ships, gear, upgrade levels, sector stars and arena records.
+  - The format is a self-describing envelope (`format` / `version` / `savedAt` / `data`), so saves stay portable and future-proof — and every import is sanitized before it touches your live save.
+
 - **🎯 Test Range: know exactly where your numbers come from**:
   - A no-stakes sandbox stage (no enemy waves, no loot, no game over) reached from the main menu.
   - **Itemized stat breakdown**: every stat shows its sources line by line — base ship value, upgrade level, each equipped item **by name**, and drone contributions (e.g. `Damage 100 = ship 60 + OVERCHARGE (A gun) 22 + command aura (drones) 18`), plus the worked formula and a stacked source bar.

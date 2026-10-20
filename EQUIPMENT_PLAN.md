@@ -87,6 +87,40 @@
     the tool row (WORKSHOP / HANGAR / ARSENAL) and the TEST RANGE / SETTINGS row are unchanged.
   - Button text shortened to **🚀 CAMPAIGN** and **⚔️ ARENA** to fit the half-width cells.
 
+- [x] 5.7 **Developer Panel** (user-requested) — dev builds only.
+  - `src/ui/DevPanel.js` — self-contained overlay; builds its own DOM so `index.html` has no dev
+    markup. Three tabs: **BESTIARY** (searchable, all 13 enemies + 10 bosses with live stats and
+    one-click spawn into the Training Range), **CURRENCY** (grant shards / crystals, presets +
+    custom), **UTIL** (grant gear, unlock all ships/sectors/tracks/secondaries, max upgrades,
+    arena checkpoint 50, god mode, full heal, kill boss/all, jump to range, export/import/reset
+    the save).
+  - `src/ui/devSetup.js` — bootstrap (menu button + **F2** toggle, **ESC** closes).
+  - **Production exclusion:** `main.js` uses `if (import.meta.env.DEV) { import('./ui/devSetup.js') }`.
+    Vite rewrites the flag to `false`, the import is dropped, and **no dev chunk is emitted**.
+    Verified: `dist/assets/` contains only `index-*.js` / `index-*.css`, with **0** occurrences of
+    `DevPanel` / `DEV PANEL` / `dev-bestiary` / `grantShards` / `F2`; the build transforms 20
+    modules instead of 22. The dev server, by contrast, serves `import.meta.env = {DEV: true, ...}`.
+  - `Player.devGodMode` makes `Player.takeDamage()` ignore all damage (dev only).
+  - Verified by `/tmp/opencode/dev_panel.mjs` (45 assertions, DOM-level).
+
+- [x] 5.8 **Save Transfer** (user-requested) — player-facing, available to everyone.
+  - New `src/engine/SaveTransfer.js`: portable JSON envelope
+    (`format` / `version` / `savedAt` / `game` / `data`), pretty-printed so it is readable.
+  - `parseSave()` accepts the envelope, a bare legacy save, or a future format nested under
+    `data`; everything is pushed through `sanitizeSaveData()` — the **same** validation gate
+    `Storage.load()` uses — so an import can never corrupt the live save.
+  - `Storage.js` refactor: the sanitize body was extracted from `Storage.load()` into the
+    exported `sanitizeSaveData()`, so load and import cannot drift apart.
+  - **Options → SAVE TRANSFER** (`screen-settings`): 📤 EXPORT, 📋 COPY, ⬇️ DOWNLOAD .JSON,
+    📤 SHARE (native share sheet, hidden where unsupported), 📋 PASTE, 📁 OPEN FILE, ⬆️ IMPORT.
+    Import shows a summary and asks for confirmation; a cancelled import changes nothing; a
+    successful import persists and reloads the game.
+  - The dev-only Developer Panel now reuses the same `serializeSave()` / `parseSave()`, so
+    dev and player exports are interchangeable.
+  - Verified by `/tmp/opencode/save_transfer.mjs` (66 assertions, incl. the real cross-device
+    scenario: export on "device A" → import on "device B" restores every field) and
+    `/tmp/opencode/save_transfer_ui.mjs` (35 DOM-level assertions driving the real buttons).
+
 ---
 
 ## Notes / blockers

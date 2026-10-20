@@ -114,6 +114,7 @@ export class Player {
     this.invulnerableTimer = 1.5; // Spawn protection
     this.thrusterGlow = 0;
     this.isDead = false;
+    this.devGodMode = false; // Developer panel only (dev builds)
 
     // Audio / Visual triggers
     this.shieldHitEffect = 0;
@@ -600,6 +601,8 @@ export class Player {
 
   takeDamage(amount, particles, floatingTexts) {
     if (this.invulnerableTimer > 0 || this.isDead) return;
+    // Developer panel god mode (dev builds only) — ignore all incoming damage.
+    if (this.devGodMode) return;
 
     // Ship passive damage mitigation (e.g. CYBER CUBE bulwark plating)
     if (this.damageReduction > 0) {

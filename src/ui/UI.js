@@ -6,6 +6,10 @@ import { ENEMY_TYPES } from '../entities/Enemy.js';
 import { Renderer } from '../engine/Renderer.js';
 import { audio, TRACK_NAMES } from '../engine/Audio.js';
 import { Storage } from '../engine/Storage.js';
+import {
+  serializeSave, parseSave, describeSave, saveFilename,
+  copyText, readClipboard, downloadSave, shareSave, canShare, readFileAsText
+} from '../engine/SaveTransfer.js';
 
 // Format one source line of a stat breakdown, respecting the stat's unit kind.
 function formatBreakdownValue(line, group) {
@@ -366,6 +370,133 @@ export class UIManager {
         this.syncSettingsToggles();
         alert('Save data reset successfully!');
       }
+    };
+
+    this.setupSaveTransfer();
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  SAVE TRANSFER — export / import the save as portable JSON
+   * ------------------------------------------------------------------ */
+  setupSaveTransfer() {
+    const exportBtn = document.getElementById('btn-export-save');
+    if (!exportBtn) return;
+
+    const exportArea = document.getElementById('save-export-text');
+    const importArea = document.getElementById('save-import-text');
+    const statusEl = document.getElementById('transfer-status');
+    const summaryEl = document.getElementById('transfer-summary');
+    const copyBtn = document.getElementById('btn-copy-save');
+    const shareBtn = document.getElementById('btn-share-save');
+    const downloadBtn = document.getElementById('btn-download-save');
+    const pasteBtn = document.getElementById('btn-paste-import');
+    const fileBtn = document.getElementById('btn-file-import');
+    const doImportBtn = document.getElementById('btn-do-import');
+    const fileInput = document.getElementById('save-import-file');
+
+    const setStatus = (msg, kind = '') => {
+      if (!statusEl) return;
+      statusEl.textContent = msg || '';
+      statusEl.className = `transfer-status ${kind}`.trim();
+    };
+
+    const refreshSummary = () => {
+      if (summaryEl) {
+        summaryEl.innerHTML = `CURRENT SAVE: ${describeSave(this.game.saveData)}`;
+      }
+    };
+
+    const setExportEnabled = (on) => {
+      if (copyBtn) copyBtn.disabled = !on;
+      if (downloadBtn) downloadBtn.disabled = !on;
+    };
+
+    refreshSummary();
+    setExportEnabled(false);
+    if (shareBtn) shareBtn.classList.toggle('hidden', !canShare());
+
+    // --- Export ---
+    exportBtn.onclick = () => {
+      const json = serializeSave(this.game.saveData);
+      if (exportArea) {
+        exportArea.value = json;
+        exportArea.removeAttribute('readonly');
+        exportArea.focus();
+        exportArea.setSelectionRange(0, exportArea.value.length);
+      }
+      setExportEnabled(true);
+      setStatus('Save generated. Copy it, download it, or share it.', 'ok');
+      audio.playPowerup();
+    };
+
+    copyBtn.onclick = async () => {
+      const text = exportArea?.value || serializeSave(this.game.saveData);
+      const ok = await copyText(text);
+      if (ok) {
+        setStatus('Copied to clipboard. Paste it into a message or notes app.', 'ok');
+        audio.playPowerup();
+      } else {
+        setStatus('Could not copy automatically — select the text above and copy manually.', 'warn');
+        exportArea?.focus();
+        exportArea?.select();
+      }
+    };
+
+    downloadBtn.onclick = () => {
+      const text = exportArea?.value || serializeSave(this.game.saveData);
+      const ok = downloadSave(text, saveFilename(this.game.saveData));
+      setStatus(ok ? 'File downloaded.' : 'Download failed — use COPY instead.', ok ? 'ok' : 'warn');
+    };
+
+    shareBtn.onclick = async () => {
+      const text = exportArea?.value || serializeSave(this.game.saveData);
+      const ok = await shareSave(text, 'Neon Defender Save');
+      if (!ok) setStatus('Share unavailable — use COPY instead.', 'warn');
+    };
+
+    // --- Import ---
+    pasteBtn.onclick = async () => {
+      const text = await readClipboard();
+      if (!text) {
+        setStatus('Clipboard unavailable or empty — paste into the box manually.', 'warn');
+        return;
+      }
+      if (importArea) importArea.value = text;
+      setStatus('Pasted from clipboard. Press IMPORT to apply it.', 'ok');
+    };
+
+    fileBtn.onclick = () => fileInput?.click();
+
+    fileInput.onchange = async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      try {
+        const text = await readFileAsText(file);
+        if (importArea) importArea.value = text;
+        setStatus(`Loaded "${file.name}". Press IMPORT to apply it.`, 'ok');
+      } catch (e) {
+        setStatus(`Could not read the file: ${e.message}`, 'error');
+      }
+      if (fileInput) fileInput.value = '';
+    };
+
+    doImportBtn.onclick = () => {
+      const text = importArea?.value || '';
+      const result = parseSave(text);
+      if (!result.ok) {
+        setStatus(result.error || 'Import failed.', 'error');
+        return;
+      }
+      const summary = describeSave(result.saveData);
+      if (!confirm(`Import this save?\n\n${summary}\n\nThis REPLACES your current progress.`)) {
+        setStatus('Import cancelled.', 'warn');
+        return;
+      }
+      Storage.save(result.saveData);
+      this.game.saveData = Storage.load();
+      setStatus('Save imported! Reloading…', 'ok');
+      audio.playPowerup();
+      setTimeout(() => location.reload(), 600);
     };
   }
 

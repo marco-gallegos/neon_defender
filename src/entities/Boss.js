@@ -5,7 +5,7 @@ import { ShardItem, PowerupCapsule } from './Powerup.js';
 import { Enemy } from './Enemy.js';
 import { audio } from '../engine/Audio.js';
 
-const BOSS_TYPES = {
+export const BOSS_TYPES = {
   guardian: {
     radius: 58,
     speed: 84,

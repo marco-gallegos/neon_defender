@@ -49,9 +49,20 @@ class Game {
     this.runKills = 0;
     this.runScore = 0;
 
+    // Developer panel — populated only in dev builds (see initDevPanel).
+    this.devPanel = null;
+
     // Time Tracking
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this.loop(t));
+
+    // Developer panel — DEV BUILDS ONLY.
+    // `import.meta.env.DEV` is replaced with `false` by Vite in production,
+    // so this import expression is dropped and neither `devSetup.js` nor
+    // `DevPanel.js` is emitted into the shipped bundle.
+    if (import.meta.env.DEV) {
+      import('./ui/devSetup.js').then(m => m.initDevPanel(this));
+    }
   }
 
   handleResize() {
@@ -434,6 +445,9 @@ class Game {
     if (this.state === 'PLAYING') {
       this.updateGame(simDt);
     }
+
+    // Developer panel (dev builds only) — keeps god mode active.
+    this.devPanel?.tick();
 
     // Render pass
     this.renderer.clear();

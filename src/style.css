@@ -1954,3 +1954,89 @@ h1, h2, h3 {
   .stat-detail-total { font-size: 1rem; }
   .training-spawn-grid { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
 }
+
+/* ================= SAVE TRANSFER ================= */
+.transfer-summary {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 9px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.transfer-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.transfer-row .neon-btn {
+  flex: 1;
+  font-size: 0.68rem;
+  padding: 10px 5px;
+  letter-spacing: 0.4px;
+}
+
+.transfer-textarea {
+  width: 100%;
+  min-height: 88px;
+  max-height: 190px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6rem;
+  line-height: 1.45;
+  color: #b9e6ff;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 240, 255, 0.28);
+  border-radius: 8px;
+  padding: 8px 9px;
+  outline: none;
+  margin-bottom: 8px;
+}
+
+.transfer-textarea:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.transfer-divider {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0 10px;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 1.5px;
+  color: var(--neon-magenta);
+}
+
+.transfer-divider::before,
+.transfer-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 0, 127, 0.45), transparent);
+}
+
+.transfer-status {
+  font-size: 0.68rem;
+  line-height: 1.5;
+  min-height: 1em;
+  padding: 0 2px;
+  color: #8f99bd;
+}
+
+.transfer-status.ok { color: var(--neon-lime); }
+.transfer-status.warn { color: var(--neon-yellow); }
+.transfer-status.error { color: #ff8fa8; }
+
+.neon-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
